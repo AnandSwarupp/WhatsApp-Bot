@@ -39,7 +39,7 @@ def send_otp_email(to_email, otp):
     try:
         with smtplib.SMTP("smtp.gmail.com", 587) as server:
             server.starttls()
-            server.login("dinoboy@gmail.com", "Msr@142025")
+            server.login("dinoboyadi@gmail.com", "Msr@142025")
             server.send_message(msg)
         print(f"✅ OTP sent to {to_email}")
     except Exception as e:
