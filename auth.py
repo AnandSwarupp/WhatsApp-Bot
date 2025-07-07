@@ -33,13 +33,13 @@ def clear_user(sender):
 def send_otp_email(to_email, otp):
     msg = MIMEText(f"Your OTP is: {otp}")
     msg["Subject"] = "Your FinBot OTP"
-    msg["From"] = "youremail@example.com"
+    msg["From"] = "dinoboy@gmail.com"
     msg["To"] = to_email
 
     try:
         with smtplib.SMTP("smtp.gmail.com", 587) as server:
             server.starttls()
-            server.login("youremail@example.com", "your_app_password")
+            server.login("dinoboy@gmail.com", "Msr@142025")
             server.send_message(msg)
         print(f"✅ OTP sent to {to_email}")
     except Exception as e:
