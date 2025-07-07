@@ -1,6 +1,9 @@
 import random
 import smtplib
-from email.mime.text import MIMEText
+from email.message import EmailMessage
+
+EMAIL_USER = "dinoboyadi@gmail.com"
+EMAIL_PASSWORD = "esahoznfsipmqjcq"
 
 user_states = {}
 user_emails = {}
@@ -30,20 +33,21 @@ def clear_user(sender):
     user_otps.pop(sender, None)
     user_emails.pop(sender, None)
 
-def send_otp_email(to_email, otp):
-    msg = MIMEText(f"Your OTP is: {otp}")
-    msg["Subject"] = "Your FinBot OTP"
-    msg["From"] = "dinoboy@gmail.com"
+def send_otp_email(to_email: str, otp: str):
+    msg = EmailMessage()
+    msg.set_content(f"Your FinBot verification code is: {otp}")
+    msg["Subject"] = "Your FinBot OTP Code"
+    msg["From"] = EMAIL_USER
     msg["To"] = to_email
 
     try:
         with smtplib.SMTP("smtp.gmail.com", 587) as server:
             server.starttls()
-            server.login("dinoboyadi@gmail.com", "Msr@142025")
+            server.login(EMAIL_USER, EMAIL_PASSWORD)
             server.send_message(msg)
-        print(f"✅ OTP sent to {to_email}")
+            print("✅ Email sent successfully.")
     except Exception as e:
-        print("❌ Email error:", e)
+        print(f"❌ Email error: {e}")
 
 def generate_and_send_otp(sender, email):
     otp = str(random.randint(100000, 999999))
@@ -56,4 +60,3 @@ def set_user_intent(sender, intent):
 
 def get_user_intent(sender):
     return user_intent.get(sender, "unknown")
-
