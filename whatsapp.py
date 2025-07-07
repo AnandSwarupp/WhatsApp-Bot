@@ -51,8 +51,8 @@ def send_button_message(to: str):
                     {
                         "type": "reply",
                         "reply": {
-                            "id": "upload_bank-statement",
-                            "title": "💼 Upload Bank Statement"
+                            "id": "chat_finance",
+                            "title": "💬 Chat"
                         }
                     }
                 ]
@@ -69,8 +69,6 @@ def handle_button_click(to: str, button_id: str):
         send_message(to, "📝 Please upload a clear photo or PDF of your cheque.")
     elif button_id == "upload_invoice":
         send_message(to, "🧾 Please upload your invoice document.")
-    elif button_id == "upload_bank-statement":
-        send_message(to, "🏦 Please upload your bank statement.")
     elif button_id == "chat_finance":
         send_message(to, "💬 Ask me anything finance-related!")
     else:
