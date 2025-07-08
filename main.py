@@ -17,7 +17,7 @@ from whatsapp import send_message, send_button_message, handle_button_click
 app = FastAPI()
 
 VERIFY_TOKEN = os.getenv("VERIFY_TOKEN")
-ACCESS_TOKEN = os.getenv("ACCESS_TOKEN")
+ACCESS_TOKEN = "EAAR4EKodEE4BPGkghuIvDZCTgROMu4eW2EOTEGm0XeNM9gjq3sQTeFQZAAUU4W2i6MNiVHdHkUHYxnZBY8do8ZA642YlVzewvM8LEokJYOzj1tMD5xzqD3nkWmmZCVoILrAqMR8DPEcihvVpilRO5TT1EVZAHT9xV4knkr7y7il3tKIlcP3MZCjZC8HlOIpXBGvawFUav5sHh0B1CadyTMT1mAdyoBvZBSvJ86KwSEnwzyljZBuXsZD"
 PHONE_NUMBER_ID = os.getenv("PHONE_NUMBER_ID")
 GRAPH_API_URL = f"https://graph.facebook.com/v19.0/{PHONE_NUMBER_ID}/messages"
 
