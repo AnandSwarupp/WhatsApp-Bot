@@ -229,55 +229,17 @@ async def webhook(request: Request):
             try:
                 response_text = ask_openai(prompt)
                 send_message(sender, response_text)
-                send_message(sender, "✅ Your document has been uploaded successfully.")
             
-                lines = response_text.splitlines()
                 email = get_user_email(sender)
+                lines = response_text.splitlines()
             
-                if intent == "upload_cheque":
-                    cheque_data = {
-                        "Email": email,
-                        "Payee Name": "Not Found",
-                        "Senders Name": "Not Found",
-                        "Amount": None,
-                        "Date": None,
-                        "Bank Name": "Not Found",
-                        "Account Number": None,
-                    }
-            
-                    for line in lines:
-                        if line.startswith("Receiver Name:"):
-                            cheque_data["Payee Name"] = line.split(":", 1)[1].strip()
-                        elif line.startswith("Account Holder Name:"):
-                            cheque_data["Senders Name"] = line.split(":", 1)[1].strip()
-                        elif line.startswith("Cheque Date:"):
-                            raw_date = line.split(":", 1)[1].strip()
-                            try:
-                                cheque_data["Date"] = datetime.strptime(raw_date, "%d%m%Y").date().isoformat()
-                            except:
-                                cheque_data["Date"] = None
-                        elif line.startswith("Bank Name:"):
-                            cheque_data["Bank Name"] = line.split(":", 1)[1].strip()
-                        elif line.startswith("Account Number:"):
-                            try:
-                                cheque_data["Account Number"] = int(line.split(":", 1)[1].strip())
-                            except:
-                                cheque_data["Account Number"] = None
-                        elif line.startswith("Amount:"):
-                            try:
-                                cheque_data["Amount"] = int(float(line.split(":", 1)[1].strip()))
-                            except:
-                                cheque_data["Amount"] = None
-            
-                    supabase.table("cheique").insert(cheque_data).execute()
-            
-                elif intent == "upload_invoice":
+                if intent == "upload_invoice":
                     invoice_data = {
                         "email": email,
                         "invoice_number": "Not Found",
                         "sellers_name": "Not Found",
                         "buyers_name": "Not Found",
-                        "invoice_date": None,
+                        "date": None,
                         "item": "Not Found",
                         "quantity": None,
                         "amount": None,
@@ -292,31 +254,53 @@ async def webhook(request: Request):
                             invoice_data["buyers_name"] = line.split(":", 1)[1].strip()
                         elif line.startswith("Invoice Date:"):
                             raw_date = line.split(":", 1)[1].strip()
-                            for fmt in ("%d/%m/%Y", "%Y-%m-%d"):
-                                try:
-                                    invoice_data["invoice_date"] = datetime.strptime(raw_date, fmt).date().isoformat()
-                                    break
-                                except:
-                                    continue
-                        elif line.startswith("Item:"):
+                            invoice_data["date"] = format_date(raw_date)
+                        elif line.strip().startswith("- Item:"):
                             invoice_data["item"] = line.split(":", 1)[1].strip()
-                        elif line.startswith("Quantity:"):
-                            try:
-                                invoice_data["quantity"] = int(line.split(":", 1)[1].strip())
-                            except:
-                                pass
-                        elif line.startswith("Amount:"):
-                            try:
-                                invoice_data["amount"] = int(float(line.split(":", 1)[1].strip()))
-                            except:
-                                pass
+                        elif line.strip().startswith("Quantity:"):
+                            qty = line.split(":", 1)[1].strip()
+                            invoice_data["quantity"] = int(qty) if qty.isdigit() else None
+                        elif line.strip().startswith("Amount:") or line.strip().startswith("Total Amount:"):
+                            amt = line.split(":", 1)[1].strip().replace(",", "").replace("₹", "")
+                            invoice_data["amount"] = int(float(amt)) if amt.replace('.', '').isdigit() else None
             
                     supabase.table("upload_invoice").insert(invoice_data).execute()
             
+                elif intent == "upload_cheque":
+                    cheque_data = {
+                        "email": email,
+                        "payee_name": "Not Found",
+                        "senders_name": "Not Found",
+                        "amount": None,
+                        "date": None,
+                        "bank_name": "Not Found",
+                        "account_number": None,
+                    }
+            
+                    for line in lines:
+                        if line.startswith("Receiver Name:"):
+                            cheque_data["payee_name"] = line.split(":", 1)[1].strip()
+                        elif line.startswith("Account Holder Name:"):
+                            cheque_data["senders_name"] = line.split(":", 1)[1].strip()
+                        elif line.startswith("Cheque Date:"):
+                            raw_date = line.split(":", 1)[1].strip()
+                            cheque_data["date"] = format_date(raw_date)
+                        elif line.startswith("Bank Name:"):
+                            cheque_data["bank_name"] = line.split(":", 1)[1].strip()
+                        elif line.startswith("Account Number:"):
+                            acc = line.split(":", 1)[1].strip().replace(" ", "")
+                            cheque_data["account_number"] = int(acc) if acc.isdigit() else None
+                        elif line.startswith("Amount:"):
+                            amt = line.split(":", 1)[1].strip().replace(",", "").replace("₹", "")
+                            cheque_data["amount"] = int(float(amt)) if amt.replace('.', '').isdigit() else None
+            
+                    supabase.table("upload_cheique").insert(cheque_data).execute()
+            
+                send_message(sender, "✅ Your document has been uploaded successfully.")
+            
             except Exception as e:
                 print("❌ Error during OCR or DB insert:", e)
-                send_message(sender, "⚠ Failed to understand or store the document. Try again.")
-
+                send_message(sender, "⚠ Failed to understand or store the document. Try again.")
 
     except Exception as e:
         print("Unhandled error:", e)
