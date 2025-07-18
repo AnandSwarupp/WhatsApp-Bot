@@ -227,7 +227,7 @@ async def webhook(request: Request):
             try:
                 response_text = ask_openai(prompt)
                 print(f"🤖 Response:\n{response_text}")
-
+                send_message(sender, response_text)
                 parsed = {}
                 for line in response_text.splitlines():
                     if ":" in line:
@@ -261,7 +261,6 @@ async def webhook(request: Request):
                         "account_number": parsed.get("account_number", "Not Found")
                     }
                     supabase.table("upload_cheique").insert(cheque_data).execute()
-
                 send_message(sender, response_text)
                 send_message(sender, "✅ Document uploaded and stored successfully.")
                 return {"status": "ok"}
