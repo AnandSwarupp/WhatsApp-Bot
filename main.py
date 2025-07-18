@@ -22,7 +22,6 @@ from whatsapp import send_message, send_button_message
 from ocr import ocr_from_bytes
 from openai_utils import ask_openai
 
-# Initialize FastAPI
 app = FastAPI()
 
 # Supabase setup
@@ -32,6 +31,7 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 ACCESS_TOKEN = "EAAR4EKodEE4BPExXPRZAu71OT6ut0xZCbyU7yM9Sz5kTkXdYZAvpDHJ1BhUjTZAMAHnZAbzIMS2tuUuwMcCVXav7bGlTWLqIZC6M7L9tDdBiyBi3Y0blA3JCvZCQluM4IGpP5SNlO3mxzBqEt2IaC4PH0x25ES8b1CDpxHLH26c1YwqJ9pxaQNsZC9bfAYxQ4A06PQXrJrLhXXsLYNSotkMG1Q1zHiD5WgMIbtPsV1UdipnmJQZDZD"
 PHONE_NUMBER_ID = os.getenv("PHONE_NUMBER_ID")
+
 
 @app.post("/webhook")
 async def webhook(request: Request):
@@ -150,7 +150,17 @@ async def webhook(request: Request):
             meta = requests.get(meta_url, params={"access_token": ACCESS_TOKEN}).json()
             media_url = meta.get("url")
 
-            file_bytes = requests.get(media_url, headers={"Authorization": f"Bearer {ACCESS_TOKEN}"}).content
+            if not media_url:
+                print("❌ Failed to get media URL:", meta)
+                send_message(sender, "⚠️ Failed to download your file. Please try again.")
+                return {"status": "ok"}
+
+            try:
+                file_bytes = requests.get(media_url, headers={"Authorization": f"Bearer {ACCESS_TOKEN}"}).content
+            except Exception as e:
+                print("❌ Error downloading file:", e)
+                send_message(sender, "⚠️ Failed to download your file.")
+                return {"status": "ok"}
 
             try:
                 ocr_text = ocr_from_bytes(file_bytes)
@@ -171,12 +181,10 @@ async def webhook(request: Request):
                     - Quantity
                     - Amount (Total)
 
-                    If any field is missing or unclear, write \"Not Found\".
+                    If any field is missing or unclear, write "Not Found".
 
                     OCR Text:
-                    \"\"\"
-                    {ocr_text}
-                    \"\"\"
+                    \"\"\"{ocr_text}\"\"\"
 
                     Return the output in this format:
                     Invoice Number: ...
@@ -192,44 +200,39 @@ async def webhook(request: Request):
             elif intent == "upload_cheque":
                 prompt = f"""
                     You are an intelligent OCR post-processor for Indian bank cheques.
-                    
-                    Your job is to extract specific fields from the cheque OCR result. Pay special attention to the positions and context of each field.
-                    
-                    ### Extraction Instructions:
-                    - **Receiver Name**: This is the person or entity the cheque is made payable to. It appears directly after "PAY".
-                    - **Account Holder Name**: This is the person who signed the cheque. It is usually printed or written at the bottom-right, near the signature line.
-                    - **Cheque Date**: Usually in the top-right corner, formatted like DDMMYYYY.
-                    - **Bank Name**: Printed in the top-left.
-                    - **Account Number**: Written after A/c No. , basicallly below the amount**.
-                    - **Amount**: Extract the full amount in numerals.
-                    
-                    Ignore static texts like "OR BEARER", "Rupees", etc.
-                    
-                    If any field is missing or unreadable, write "Not Found".
-                    
+
+                    Extract these fields:
+                    - Receiver Name (after "PAY")
+                    - Account Holder Name (near signature)
+                    - Cheque Date (top right, DDMMYYYY)
+                    - Bank Name (top left)
+                    - Account Number (near amount or A/c No.)
+                    - Amount (in numerals)
+
+                    Ignore static text like "OR BEARER", "Rupees", etc.
+
                     OCR Text:
-                    \"\"\"
-                    {ocr_text}
-                    \"\"\"
-                    
+                    \"\"\"{ocr_text}\"\"\"
+
                     Return the result in this format:
-                    
+
                     Account Holder Name: ...
                     Receiver Name: ...
                     Cheque Date: ...
                     Bank Name: ...
                     Account Number: ...
                     Amount: ...
-                    """
+                """
             else:
                 raise ValueError(f"❌ Unknown intent: {intent}")
 
             try:
                 response_text = ask_openai(prompt)
                 send_message(sender, response_text)
-                send_message(sender, "Your document has been uploaded successfully.")
+                send_message(sender, "✅ Your document has been uploaded successfully.")
             except Exception as e:
                 send_message(sender, "⚠️ Failed to understand the document. Try again.")
+
             return {"status": "ok"}
 
     except Exception as e:
@@ -237,4 +240,3 @@ async def webhook(request: Request):
         return JSONResponse(status_code=500, content={"error": str(e)})
 
     return {"status": "ok"}
-
