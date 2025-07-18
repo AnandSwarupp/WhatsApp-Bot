@@ -2,7 +2,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 import requests, os, json
 from supabase import create_client, Client
-from dotenv import load_dotenv
+
 from auth import (
     get_user_state,
     set_user_state,
@@ -17,13 +17,13 @@ from auth import (
     set_user_intent,
     get_user_intent
 )
+
 from whatsapp import send_message, send_button_message
 from ocr import ocr_from_bytes
 from openai_utils import ask_openai
 
 # Initialize FastAPI
 app = FastAPI()
-load_dotenv()
 
 # Supabase setup
 SUPABASE_URL = os.getenv("SUPABASE_URL")
@@ -226,16 +226,15 @@ async def webhook(request: Request):
 
             try:
                 response_text = ask_openai(prompt)
-                print(f"🤖 Response:\n{response_text}")
                 send_message(sender, response_text)
-            
+                send_message(sender, "Your document has been uploaded successfully.")
             except Exception as e:
-                print("❌ OpenAI or Supabase error:", e)
-                send_message(sender, "⚠️ Something went wrong while processing the document.")
-                return {"status": "ok"}
+                send_message(sender, "⚠️ Failed to understand the document. Try again.")
+            return {"status": "ok"}
 
     except Exception as e:
         print("Unhandled error:", e)
         return JSONResponse(status_code=500, content={"error": str(e)})
 
     return {"status": "ok"}
+
