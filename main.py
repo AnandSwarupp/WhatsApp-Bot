@@ -228,43 +228,7 @@ async def webhook(request: Request):
                 response_text = ask_openai(prompt)
                 print(f"🤖 Response:\n{response_text}")
                 send_message(sender, response_text)
-                parsed = {}
-                for line in response_text.splitlines():
-                    if ":" in line:
-                        key, value = line.split(":", 1)
-                        parsed[key.strip().lower().replace(" ", "_")] = value.strip()
-
-                user_email = get_user_email(sender)
-                email = user_email.get("verified_email") if isinstance(user_email, dict) else user_email
-
-                if intent == "upload_invoice":
-                    invoice_data = {
-                        "email": email,
-                        "invoice_number": parsed.get("invoice_number", "Not Found"),
-                        "sellers_name": parsed.get("seller_name", "Not Found"),
-                        "buyers_name": parsed.get("buyer_name", "Not Found"),
-                        "date": parsed.get("invoice_date", "Not Found"),
-                        "item": parsed.get("item", "Not Found"),
-                        "quantity": parsed.get("quantity", "Not Found"),
-                        "amount": parsed.get("total_amount", "Not Found")
-                    }
-                    supabase.table("upload_invoice").insert(invoice_data).execute()
-
-                elif intent == "upload_cheque":
-                    cheque_data = {
-                        "email": email,
-                        "payee_name": parsed.get("receiver_name", "Not Found"),
-                        "senders_name": parsed.get("account_holder_name", "Not Found"),
-                        "amount": parsed.get("amount", "Not Found"),
-                        "date": parsed.get("cheque_date", "Not Found"),
-                        "bank_name": parsed.get("bank_name", "Not Found"),
-                        "account_number": parsed.get("account_number", "Not Found")
-                    }
-                    supabase.table("upload_cheique").insert(cheque_data).execute()
-                send_message(sender, response_text)
-                send_message(sender, "✅ Document uploaded and stored successfully.")
-                return {"status": "ok"}
-
+            
             except Exception as e:
                 print("❌ OpenAI or Supabase error:", e)
                 send_message(sender, "⚠️ Something went wrong while processing the document.")
