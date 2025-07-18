@@ -189,15 +189,40 @@ async def webhook(request: Request):
                         Amount: ...
                     Total Amount: ...
                 """
+                
             elif intent == "upload_cheque":
                 prompt = f"""
                     You are an intelligent OCR post-processor for Indian bank cheques.
-                    Extract fields like Receiver Name, Account Holder Name, Cheque Date, Bank Name, Account Number, and Amount.
+                    
+                    Your job is to extract specific fields from the cheque OCR result. Pay special attention to the positions and context of each field.
+                    
+                    ### Extraction Instructions:
+                    - **Receiver Name**: This is the person or entity the cheque is made payable to. It appears directly after "PAY".
+                    - **Account Holder Name**: This is the person who signed the cheque. It is usually printed or written at the bottom-right, near the signature line.
+                    - **Cheque Date**: Usually in the top-right corner, formatted like DDMMYYYY.
+                    - **Bank Name**: Printed in the top-left.
+                    - **Account Number**: Written after A/c No. , basicallly below the amount**.
+                    - **Amount**: Extract the full amount in numerals.
+                    
+                    Ignore static texts like "OR BEARER", "Rupees", etc.
+                    
+                    If any field is missing or unreadable, write "Not Found".
+                    
                     OCR Text:
                     \"\"\"
                     {ocr_text}
                     \"\"\"
-                """
+                    
+                    Return the result in this format:
+                    
+                    Account Holder Name: ...
+                    Receiver Name: ...
+                    Cheque Date: ...
+                    Bank Name: ...
+                    Account Number: ...
+                    Amount: ...
+                    """
+                
             else:
                 raise ValueError(f"❌ Unknown intent: {intent}")
 
