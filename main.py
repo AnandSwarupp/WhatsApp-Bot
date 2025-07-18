@@ -2,7 +2,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 import requests, os, json
 from supabase import create_client, Client
-
+from dotenv import load_dotenv
 from auth import (
     get_user_state,
     set_user_state,
@@ -17,13 +17,13 @@ from auth import (
     set_user_intent,
     get_user_intent
 )
-
 from whatsapp import send_message, send_button_message
 from ocr import ocr_from_bytes
 from openai_utils import ask_openai
 
 # Initialize FastAPI
 app = FastAPI()
+load_dotenv()
 
 # Supabase setup
 SUPABASE_URL = os.getenv("SUPABASE_URL")
