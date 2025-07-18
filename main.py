@@ -21,6 +21,7 @@ from auth import (
 from whatsapp import send_message, send_button_message
 from ocr import ocr_from_bytes
 from openai_utils import ask_openai
+from datetime import datetime
 
 app = FastAPI()
 
@@ -32,6 +33,11 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 ACCESS_TOKEN = "EAAR4EKodEE4BPEdoHhdO0ckOAZBCFyE7dgr4nLmEAZCgyZAV1gmiFlktl7dNZARXoxQNVbNBjq0LmWrOpWZCbYRyuBNcHmkdBhKkFspA9WxajOkyTf9S9p8R9ZBFfQ9DJZBOmF3TMliH3xwpMWVzqFe8jFGZBCcuzbDhAPqNgajLJBZCyoxIJWrEmWFaCxksmZAX63lUjnoPYB1cqPwMoOSypTGXshzQYs0Am6u4ZBLJm4l6rjjEgZDZD"
 PHONE_NUMBER_ID = os.getenv("PHONE_NUMBER_ID")
 
+def format_date(raw_date: str) -> str | None:
+    try:
+        return datetime.strptime(raw_date, "%d%m%Y").date().isoformat()
+    except ValueError:
+        return None
 
 @app.post("/webhook")
 async def webhook(request: Request):
