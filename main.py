@@ -230,7 +230,7 @@ async def webhook(request: Request):
                     supabase.table("upload_cheique").insert(cheque_data).execute()
 
                 send_message(sender, response_text)
-                send_message(sender, "✅ Document uploaded and stored successfully.")
+                send_message(sender, "✅ Document uploaded successfully.")
                 return {"status": "ok"}
 
             except Exception as e:
