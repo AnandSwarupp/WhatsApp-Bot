@@ -230,8 +230,74 @@ async def webhook(request: Request):
                 response_text = ask_openai(prompt)
                 send_message(sender, response_text)
                 send_message(sender, "✅ Your document has been uploaded successfully.")
+
+                # --------- Upload to Supabase ------------
+                email = get_user_email(sender)
+                lines = response_text.splitlines()
+
+                if intent == "upload_invoice":
+                    invoice_data = {
+                        "email": email,
+                        "Invoice Number": "Not Found",
+                        "Sellers Name": "Not Found",
+                        "Buyers Name": "Not Found",
+                        "Date": "Not Found",
+                        "Item": "Not Found",
+                        "Quantity": "Not Found",
+                        "Amount": "Not Found",
+                    }
+
+                    for line in lines:
+                        if line.startswith("Invoice Number:"):
+                            invoice_data["Invoice Number"] = line.split(":", 1)[1].strip()
+                        elif line.startswith("Seller Name:"):
+                            invoice_data["Sellers Name"] = line.split(":", 1)[1].strip()
+                        elif line.startswith("Buyer Name:"):
+                            invoice_data["Buyers Name"] = line.split(":", 1)[1].strip()
+                        elif line.startswith("Invoice Date:"):
+                            invoice_data["Date"] = line.split(":", 1)[1].strip()
+                        elif line.strip().startswith("- Item:"):
+                            invoice_data["Item"] = line.split(":", 1)[1].strip()
+                        elif line.strip().startswith("Quantity:"):
+                            invoice_data["Quantity"] = line.split(":", 1)[1].strip()
+                        elif line.strip().startswith("Amount:"):
+                            invoice_data["Amount"] = line.split(":", 1)[1].strip()
+                        elif line.strip().startswith("Total Amount:"):
+                            invoice_data["Amount"] = line.split(":", 1)[1].strip()
+
+                    supabase.table("upload_invoice").insert(invoice_data).execute()
+
+                elif intent == "upload_cheque":
+                    cheque_data = {
+                        "Email": email,
+                        "Payee Name": "Not Found",
+                        "Senders Name": "Not Found",
+                        "Amount": "Not Found",
+                        "Date": "Not Found",
+                        "Bank Name": "Not Found",
+                        "Account Number": "Not Found",
+                    }
+
+                    for line in lines:
+                        if line.startswith("Receiver Name:"):
+                            cheque_data["Payee Name"] = line.split(":", 1)[1].strip()
+                        elif line.startswith("Account Holder Name:"):
+                            cheque_data["Senders Name"] = line.split(":", 1)[1].strip()
+                        elif line.startswith("Cheque Date:"):
+                            cheque_data["Date"] = line.split(":", 1)[1].strip()
+                        elif line.startswith("Bank Name:"):
+                            cheque_data["Bank Name"] = line.split(":", 1)[1].strip()
+                        elif line.startswith("Account Number:"):
+                            cheque_data["Account Number"] = line.split(":", 1)[1].strip()
+                        elif line.startswith("Amount:"):
+                            cheque_data["Amount"] = line.split(":", 1)[1].strip()
+
+                    supabase.table("cheique").insert(cheque_data).execute()
+
             except Exception as e:
-                send_message(sender, "⚠️ Failed to understand the document. Try again.")
+                print("Error during OCR or DB insert:", e)
+                send_message(sender, "⚠️ Failed to understand or store the document. Try again.")
+
 
             return {"status": "ok"}
 
