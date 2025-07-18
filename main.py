@@ -295,7 +295,7 @@ async def webhook(request: Request):
                             cheque_data["bank_name"] = line.split(":", 1)[1].strip()
                         elif line.startswith("Account Number:"):
                             acc = line.split(":", 1)[1].strip().replace(" ", "")
-                            cheque_data["account_number"] = int(acc) if acc.isdigit() else None
+                            cheque_data["account_number"] = line.split(":", 1)[1].strip()
                         elif line.startswith("Amount:"):
                             amt = line.split(":", 1)[1].strip().replace(",", "").replace("₹", "")
                             cheque_data["amount"] = int(float(amt)) if amt.replace('.', '').isdigit() else None
