@@ -4,7 +4,7 @@ from auth import set_user_intent
 from messenger import send_message
 
 
-ACCESS_TOKEN = os.getenv("ACCESS_TOKEN")
+ACCESS_TOKEN = "EAAR4EKodEE4BPL3xLpcTHvuQjGNhU706D2JPc0mXEfd5WjJtZA9cer58gb6MaAY7qZA2fr4nl7gkZCdPncUiKE9tAHnXwrDwf6Y00KTT1mQTsr80GdSLy6CP122jfXFKkFHGG04kadoyePjOKhrjgnWdbdVDTcpPs6QeDBKCMwRflEIDFx2zZBgPzu3JBqANxhcJZBKZCRZCpiorKywq1lr0uNHhvUtxF2zRyVYqEuyQpZB4tQZDZD"
 PHONE_NUMBER_ID = os.getenv("PHONE_NUMBER_ID")
 GRAPH_API_URL = f"https://graph.facebook.com/v19.0/{PHONE_NUMBER_ID}/messages"
 
