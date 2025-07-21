@@ -76,7 +76,7 @@ async def webhook(request: Request):
             if state == "awaiting_name":
                 set_user_intent(sender, text)
                 set_user_state(sender, "awaiting_age")
-                send_message(sender, "🎂 Great. Please enter your age.")
+                send_message(sender, "Great. Please enter your age.")
                 return {"status": "ok"}
 
             if state == "awaiting_age":
