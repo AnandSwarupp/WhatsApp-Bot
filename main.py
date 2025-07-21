@@ -33,7 +33,17 @@ def run_sql_on_supabase(sql_query: str):
 @app.post("/webhook")
 async def webhook(request: Request):
     data = await request.json()
-    print(json.dumps(data, indent=2))
+
+    entry = data["entry"][0]
+    changes = entry["changes"][0]
+    value = changes["value"]
+    messages = value.get("messages", [])
+    if not messages:
+        return {"status": "ok"}
+
+    msg = messages[0]
+    msg_type = msg["type"]
+    sender = msg["from"]
 
     if msg_type == "text":
         text = msg["text"]["body"].strip().lower()
