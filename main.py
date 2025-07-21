@@ -30,7 +30,7 @@ SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-ACCESS_TOKEN = "EAAR4EKodEE4BPLu0S4wGK2SYJrBbm8DLxkVKq00MhzyfvL9sF25nLT4SjQ4d2NPoOdgiM5ZCvmEeC4rRv0n9pzfgIiZAaMA3m9XWwZAkwcbFsP22vps8uIT50HjLOps5jA7DNUI9t8Cclj6xqXVsVRmDJ6ZBM5ZBe2GZCjZAizLR2TGmpoguPGVAC4kZBSJFfmQN0O6qKneZBpGDnu2hfcFCS60FvPLstEw34XPaKMpbaIpRuSQZDZD"
+ACCESS_TOKEN = "EAAR4EKodEE4BPEdoHhdO0ckOAZBCFyE7dgr4nLmEAZCgyZAV1gmiFlktl7dNZARXoxQNVbNBjq0LmWrOpWZCbYRyuBNcHmkdBhKkFspA9WxajOkyTf9S9p8R9ZBFfQ9DJZBOmF3TMliH3xwpMWVzqFe8jFGZBCcuzbDhAPqNgajLJBZCyoxIJWrEmWFaCxksmZAX63lUjnoPYB1cqPwMoOSypTGXshzQYs0Am6u4ZBLJm4l6rjjEgZDZD"
 PHONE_NUMBER_ID = os.getenv("PHONE_NUMBER_ID")
 
 def format_date(raw_date: str) -> str | None:
@@ -192,16 +192,12 @@ async def webhook(request: Request):
                     OCR Text:
                     \"\"\"{ocr_text}\"\"\"
 
-                    Return the output in this format:
-                    Invoice Number: ...
-                    Seller Name: ...
-                    Buyer Name: ...
-                    Invoice Date: ...
-                    Items:
-                    - Item: ...
-                        Quantity: ...
-                        Amount: ...
-                    Total Amount: ...
+                    Return ONLY the SQL queries like:
+
+                    INSERT INTO upload_invoice (email, invoice_number, sellers_name, buyers_name, date, item, quantity, amount)
+                    VALUES ('user@example.com', '123', 'Seller Inc.', 'Buyer Ltd.', '2025-06-30', 'Desk', 10, 5000);
+
+                    Return all items as separate insert queries. Format dates to YYYY-MM-DD.
                 """
             elif intent == "upload_cheque":
                 prompt = f"""
@@ -235,72 +231,6 @@ async def webhook(request: Request):
             try:
                 response_text = ask_openai(prompt)
                 send_message(sender, response_text)
-            
-                email = get_user_email(sender)
-                lines = response_text.splitlines()
-            
-                if intent == "upload_invoice":
-                    invoice_data = {
-                        "email": email,
-                        "invoice_number": "Not Found",
-                        "sellers_name": "Not Found",
-                        "buyers_name": "Not Found",
-                        "date": None,
-                        "item": "Not Found",
-                        "quantity": None,
-                        "amount": None,
-                    }
-            
-                    for line in lines:
-                        if line.startswith("Invoice Number:"):
-                            invoice_data["invoice_number"] = line.split(":", 1)[1].strip()
-                        elif line.startswith("Seller Name:"):
-                            invoice_data["sellers_name"] = line.split(":", 1)[1].strip()
-                        elif line.startswith("Buyer Name:"):
-                            invoice_data["buyers_name"] = line.split(":", 1)[1].strip()
-                        elif line.startswith("Invoice Date:"):
-                            raw_date = line.split(":", 1)[1].strip()
-                            invoice_data["date"] = format_date(raw_date)
-                        elif line.strip().startswith("- Item:"):
-                            invoice_data["item"] = line.split(":", 1)[1].strip()
-                        elif line.strip().startswith("Quantity:"):
-                            qty = line.split(":", 1)[1].strip()
-                            invoice_data["quantity"] = int(qty) if qty.isdigit() else None
-                        elif line.strip().startswith("Amount:") or line.strip().startswith("Total Amount:"):
-                            amt = line.split(":", 1)[1].strip().replace(",", "").replace("₹", "")
-                            invoice_data["amount"] = int(float(amt)) if amt.replace('.', '').isdigit() else None
-            
-                    supabase.table("upload_invoice").insert(invoice_data).execute()
-            
-                elif intent == "upload_cheque":
-                    cheque_data = {
-                        "email": email,
-                        "payee_name": "Not Found",
-                        "senders_name": "Not Found",
-                        "amount": None,
-                        "date": None,
-                        "bank_name": "Not Found",
-                        "account_number": None,
-                    }
-            
-                    for line in lines:
-                        if line.startswith("Receiver Name:"):
-                            cheque_data["payee_name"] = line.split(":", 1)[1].strip()
-                        elif line.startswith("Account Holder Name:"):
-                            cheque_data["senders_name"] = line.split(":", 1)[1].strip()
-                        elif line.startswith("Cheque Date:"):
-                            raw_date = line.split(":", 1)[1].strip()
-                            cheque_data["date"] = format_date(raw_date)
-                        elif line.startswith("Bank Name:"):
-                            cheque_data["bank_name"] = line.split(":", 1)[1].strip()
-                        elif line.startswith("Account Number:"):
-                            acc = line.split(":", 1)[1].strip().replace(" ", "")
-                            cheque_data["account_number"] = line.split(":", 1)[1].strip()
-                        elif line.startswith("Amount:"):
-                            amt = line.split(":", 1)[1].strip().replace(",", "").replace("₹", "")
-                            cheque_data["amount"] = int(float(amt)) if amt.replace('.', '').isdigit() else None
-            
-                    supabase.table("upload_cheique").insert(cheque_data).execute()
             
                 send_message(sender, "✅ Your document has been uploaded successfully.")
             
