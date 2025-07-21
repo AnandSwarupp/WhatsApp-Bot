@@ -193,25 +193,30 @@ async def webhook(request: Request):
 
             elif intent == "upload_cheque":
                 prompt = f"""
-You are an intelligent cheque parser.
-
-Extract the following:
-- Account Holder Name
-- Receiver Name
-- Cheque Date (DDMMYYYY)
-- Bank Name
-- Account Number
-- Amount
-
-Return one SQL query like:
-
-INSERT INTO upload_cheique (email, payee_name, senders_name, amount, date, bank_name, account_number)
-VALUES ('{email}', 'Receiver Name', 'Sender Name', 5000, '2025-07-01', 'Bank Name', '1234567890');
-
-Convert amount to integer, format date as YYYY-MM-DD.
-
-OCR TEXT:
-\"\"\"{ocr_text}\"\"\"
+                    You are an intelligent cheque parser.
+                    1. Only return the SQL query as plain text without any description, comments, code blocks, or extra characters.
+                    2. No use of Markdown or enclosing query in ```sql or ``` blocks.
+                    3. Generate the query in a single line or properly formatted with minimal whitespace.
+                    4. Ensure the query uses valid SQL syntax that can be executed directly in SQL Server.
+                    5.Dont use any /n in the code.
+                    
+                    Extract the following:
+                    - Account Holder Name
+                    - Receiver Name
+                    - Cheque Date (DDMMYYYY)
+                    - Bank Name
+                    - Account Number
+                    - Amount
+                    
+                    Return one SQL query like:
+                    
+                    INSERT INTO upload_cheique (email, payee_name, senders_name, amount, date, bank_name, account_number)
+                    VALUES ('{email}', 'Receiver Name', 'Sender Name', 5000, '2025-07-01', 'Bank Name', '1234567890');
+                    
+                    Convert amount to integer, format date as YYYY-MM-DD.
+                    
+                    OCR TEXT:
+                    \"\"\"{ocr_text}\"\"\"
                 """
 
             try:
