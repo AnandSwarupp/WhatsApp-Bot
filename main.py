@@ -33,96 +33,98 @@ def run_sql_on_supabase(sql_query: str):
 @app.post("/webhook")
 async def webhook(request: Request):
     data = await request.json()
+    print(json.dumps(data, indent=2))
 
-    entry = data["entry"][0]
-    changes = entry["changes"][0]
-    value = changes["value"]
-    messages = value.get("messages", [])
-    if not messages:
-        return {"status": "ok"}
+    try:
+        entry = data["entry"][0]["changes"][0]["value"]
+        messages = entry.get("messages")
+        if not messages:
+            return {"status": "ok"}
 
-    msg = messages[0]
-    msg_type = msg["type"]
-    sender = msg["from"]
-
-    if msg_type == "text":
-        text = msg["text"]["body"].strip().lower()
+        msg = messages[0]
+        sender = msg["from"]
+        msg_type = msg["type"]
         state = get_user_state(sender)
 
-    if text == "hello":
-        send_message(sender, "📧 Please enter your email to begin.")
-        set_user_state(sender, "awaiting_email")
-        return {"status": "ok"}
+        # OTP flow
+        if msg_type == "text":
+            text = msg["text"]["body"].strip().lower()
+            state = get_user_state(sender)
 
-    if state == "awaiting_email":
-        set_user_email(sender, text)
-        email = text
+            if text == "hello":
+                send_message(sender, "📧 Please enter your email to begin.")
+                set_user_state(sender, "awaiting_email")
+                return {"status": "ok"}
 
-        # Check if user is registered
-        result = supabase.table("users").select("email").eq("email", email).execute()
-        if result.data:
-            # Registered → ask for OTP
-            generate_and_send_otp(sender, email)
-            set_user_state(sender, "awaiting_otp")
-            send_message(sender, f"📨 OTP sent to {email}. Please reply with the code.")
-        else:
-            # Not registered → ask for name
-            set_user_state(sender, "awaiting_name")
-            send_message(sender, "👋 Welcome! Please enter your full name to register.")
-        return {"status": "ok"}
+            if state == "awaiting_email":
+                set_user_email(sender, text)
+                email = text
 
-    if state == "awaiting_name":
-        set_user_intent(sender, text)
-        set_user_state(sender, "awaiting_age")
-        send_message(sender, "🎂 Great. Please enter your age.")
-        return {"status": "ok"}
+                # Check if user is registered
+                result = supabase.table("users").select("email").eq("email", email).execute()
+                if result.data:
+                    # Registered → ask for OTP
+                    generate_and_send_otp(sender, email)
+                    set_user_state(sender, "awaiting_otp")
+                    send_message(sender, f"📨 OTP sent to {email}. Please reply with the code.")
+                else:
+                    # Not registered → ask for name
+                    set_user_state(sender, "awaiting_name")
+                    send_message(sender, "👋 Welcome! Please enter your full name to register.")
+                return {"status": "ok"}
 
-    if state == "awaiting_age":
-        try:
-            age = int(text)
-            set_user_otp(sender, str(age))
-            set_user_state(sender, "awaiting_gender")
-            send_message(sender, "👤 Almost done. Enter your gender (e.g., Male/Female/Other).")
-        except ValueError:
-            send_message(sender, "❌ Please enter a valid number for age.")
-        return {"status": "ok"}
+            if state == "awaiting_name":
+                set_user_intent(sender, text)
+                set_user_state(sender, "awaiting_age")
+                send_message(sender, "🎂 Great. Please enter your age.")
+                return {"status": "ok"}
 
-    if state == "awaiting_gender":
-        name = get_user_intent(sender)
-        age = get_user_otp(sender)
-        gender = text.strip()
-        email = get_user_email(sender)
+            if state == "awaiting_age":
+                try:
+                    age = int(text)
+                    set_user_otp(sender, str(age))
+                    set_user_state(sender, "awaiting_gender")
+                    send_message(sender, "👤 Almost done. Enter your gender (e.g., Male/Female/Other).")
+                except ValueError:
+                    send_message(sender, "❌ Please enter a valid number for age.")
+                return {"status": "ok"}
 
-        supabase.table("users").insert({
-            "name": name,
-            "age": int(age),
-            "gender": gender,
-            "email": email,
-            "whatsapp": sender
-        }).execute()
+            if state == "awaiting_gender":
+                name = get_user_intent(sender)
+                age = get_user_otp(sender)
+                gender = text.strip()
+                email = get_user_email(sender)
 
-        # Now send OTP after registration
-        generate_and_send_otp(sender, email)
-        set_user_state(sender, "awaiting_otp")
-        send_message(sender, f"✅ You're almost done! OTP sent to {email}. Please reply with the code.")
-        return {"status": "ok"}
+                supabase.table("users").insert({
+                    "name": name,
+                    "age": int(age),
+                    "gender": gender,
+                    "email": email,
+                    "whatsapp": sender
+                }).execute()
 
-    if state == "awaiting_otp":
-        if text == get_user_otp(sender):
-            mark_authenticated(sender)
-            clear_user(sender)
-            send_message(sender, "✅ OTP verified! You're now logged in.")
-            send_button_message(sender)
-        else:
-            send_message(sender, "❌ Incorrect OTP. Try again.")
-        return {"status": "ok"}
+                # Now send OTP after registration
+                generate_and_send_otp(sender, email)
+                set_user_state(sender, "awaiting_otp")
+                send_message(sender, f"✅ You're almost done! OTP sent to {email}. Please reply with the code.")
+                return {"status": "ok"}
 
-    if text == "status":
-        send_message(sender, f"📌 State: {get_user_state(sender)} | Authenticated: {is_authenticated(sender)}")
-        return {"status": "ok"}
+            if state == "awaiting_otp":
+                if text == get_user_otp(sender):
+                    mark_authenticated(sender)
+                    clear_user(sender)
+                    send_message(sender, "✅ OTP verified! You're now logged in.")
+                    send_button_message(sender)
+                else:
+                    send_message(sender, "❌ Incorrect OTP. Try again.")
+                return {"status": "ok"}
 
-    send_message(sender, "👋 Please say 'hello' to get started.")
-    return {"status": "ok"}
+            if text == "status":
+                send_message(sender, f"📌 State: {get_user_state(sender)} | Authenticated: {is_authenticated(sender)}")
+                return {"status": "ok"}
+
+            send_message(sender, "👋 Please say 'hello' to get started.")
+            return {"status": "ok"}
 
 
         if not is_authenticated(sender):
