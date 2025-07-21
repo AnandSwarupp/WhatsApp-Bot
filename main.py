@@ -211,6 +211,7 @@ OCR TEXT:
 
             try:
                 sql_response = ask_openai(prompt)
+                print("SQL to execute:", sql_response)
 
                 for line in sql_response.splitlines():
                     if line.strip().lower().startswith("insert into"):
