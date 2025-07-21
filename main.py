@@ -228,8 +228,6 @@ async def webhook(request: Request):
                 """
 
             try:
-                from whatsapp import send_message
-
                 sql_response = ask_openai(prompt)
                 print("SQL to execute:", sql_response)
                 send_message(sender, sql_response)
