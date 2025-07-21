@@ -204,6 +204,7 @@ async def webhook(request: Request):
                     3. Generate the query in a single line or properly formatted with minimal whitespace.
                     4. Ensure the query uses valid SQL syntax that can be executed directly in SQL Server.
                     5.Dont use any /n in the code.
+                    6.The name of table is "upload_cheique".
                     
                     Extract the following:
                     - Account Holder Name
