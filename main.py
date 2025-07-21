@@ -171,20 +171,25 @@ async def webhook(request: Request):
 
             if intent == "upload_invoice":
                 prompt = f"""
-You are an intelligent invoice parser.
-
-From the OCR text below, extract all the relevant invoice items and return a list of SQL INSERT statements.
-
-Insert format:
-
-INSERT INTO upload_invoice (email, invoice_number, sellers_name, buyers_name, date, item, quantity, amount)
-VALUES ('{email}', 'INV001', 'SellerName', 'BuyerName', '2025-07-18', 'Desk', 10, 10000);
-
-Return one insert per item. Convert amounts to integers. Format dates to YYYY-MM-DD.
-
-OCR TEXT:
-\"\"\"{ocr_text}\"\"\"
-                """
+                    You are an intelligent invoice parser.
+                    
+                    From the OCR text below, extract all the relevant invoice items and return a list of SQL INSERT statements.
+                    1. Only return the SQL query as plain text without any description, comments, code blocks, or extra characters.
+                    2. No use of Markdown or enclosing query in ```sql or ``` blocks.
+                    3. Generate the query in a single line or properly formatted with minimal whitespace.
+                    4. Ensure the query uses valid SQL syntax that can be executed directly in SQL Server.
+                    5.Dont use any /n in the code.
+                    
+                    Insert format:
+                    
+                    INSERT INTO upload_invoice (email, invoice_number, sellers_name, buyers_name, date, item, quantity, amount)
+                    VALUES ('{email}', 'INV001', 'SellerName', 'BuyerName', '2025-07-18', 'Desk', 10, 10000);
+                    
+                    Return one insert per item. Convert amounts to integers. Format dates to YYYY-MM-DD.
+                    
+                    OCR TEXT:
+                    \"\"\"{ocr_text}\"\"\"
+                                    """
 
             elif intent == "upload_cheque":
                 prompt = f"""
@@ -212,6 +217,7 @@ OCR TEXT:
             try:
                 sql_response = ask_openai(prompt)
                 print("SQL to execute:", sql_response)
+                send_message(sender, sql_response)
 
                 for line in sql_response.splitlines():
                     if line.strip().lower().startswith("insert into"):
