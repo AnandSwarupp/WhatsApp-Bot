@@ -7,6 +7,7 @@ from whatsapp import send_message, send_button_message
 from ocr import ocr_from_bytes
 from openai_utils import ask_openai
 from datetime import datetime
+import re
 
 app = FastAPI()
 
@@ -15,7 +16,7 @@ SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-ACCESS_TOKEN = "EAAR4EKodEE4BPKnITt4GulfhWRZAOLkAoQVutcvOUOPyJ7rrKBoZAuK4DBSCNDjJApv0aTXttNFiVPSpwRIs2ZBQGi63uXCBHXDQEuXhZBu1HCyiawGhkZAjiWmQP7qZBBq7MeQyzpEmC5UVyohMLNNpHuo5SE7hArtZCBwlcF5JBoTHU2YbreIYsHuIjylzfl23fZC7yMW46ZAfWmslpciH11Ua2g9zJj8rjoWaTRLE7LyE2eQZDZD"
+ACCESS_TOKEN = "EAAR4EKodEE4BPLu0S4wGK2SYJrBbm8DLxkVKq00MhzyfvL9sF25nLT4SjQ4d2NPoOdgiM5ZCvmEeC4rRv0n9pzfgIiZAaMA3m9XWwZAkwcbFsP22vps8uIT50HjLOps5jA7DNUI9t8Cclj6xqXVsVRmDJ6ZBM5ZBe2GZCjZAizLR2TGmpoguPGVAC4kZBSJFfmQN0O6qKneZBpGDnu2hfcFCS60FvPLstEw34XPaKMpbaIpRuSQZDZD"
 PHONE_NUMBER_ID = os.getenv("PHONE_NUMBER_ID")
 
 def format_date(raw_date: str) -> str | None:
@@ -76,7 +77,7 @@ async def webhook(request: Request):
             if state == "awaiting_name":
                 set_user_intent(sender, text)
                 set_user_state(sender, "awaiting_age")
-                send_message(sender, "Great. Please enter your age.")
+                send_message(sender, "🎂 Great. Please enter your age.")
                 return {"status": "ok"}
 
             if state == "awaiting_age":
@@ -231,8 +232,62 @@ async def webhook(request: Request):
                 send_message(sender, sql_response)
 
                 for line in sql_response.splitlines():
-                    if line.strip().lower().startswith("insert into"):
-                        run_sql_on_supabase(line.strip())
+                    sql = line.strip()
+                    if not sql.lower().startswith("insert into"):
+                        continue
+
+                    # 1. Run insert
+                    run_sql_on_supabase(sql)
+
+                    # 2. Extract table and values
+                    match = re.match(r"insert into (\w+)\s*\(.*?\)\s*values\s*\((.+?)\);?", sql, re.IGNORECASE)
+                    if not match:
+                        continue
+
+                    table = match.group(1)
+                    raw_values = match.group(2)
+                    values = [v.strip().strip("'") for v in raw_values.split(",")]
+
+                    email = values[0]  # first column is always email
+
+                    if table == "upload_invoice":
+                        # Match with tally_invoice
+                        invoice_number = values[1]
+                        item = values[5]
+                        quantity = values[6]
+                        amount = values[7]
+
+                        match_result = supabase.table("tally_invoice").select("*") \
+                            .eq("invoice_number", invoice_number) \
+                            .eq("item", item) \
+                            .eq("quantity", quantity) \
+                            .eq("amount", amount) \
+                            .execute()
+
+                        is_match = bool(match_result.data)
+
+                        # Update tally status
+                        supabase.table("upload_invoice").update({"tally": is_match}) \
+                            .eq("email", email).eq("invoice_number", invoice_number).eq("item", item).execute()
+
+                    elif table == "upload_cheique":
+                        # Match with tally_cheque
+                        account_number = values[6]
+                        amount = values[3]
+                        payee = values[1]
+
+                        match_result = supabase.table("tally_cheque").select("*") \
+                            .eq("account_number", account_number) \
+                            .eq("amount", amount) \
+                            .eq("payee_name", payee) \
+                            .execute()
+
+                        is_match = bool(match_result.data)
+
+                        # Update tally status
+                        supabase.table("upload_cheique").update({"tally": is_match}) \
+                            .eq("email", email).eq("account_number", account_number).eq("payee_name", payee).execute()
+
 
                 send_message(sender, "✅ Your document has been uploaded successfully.")
 
