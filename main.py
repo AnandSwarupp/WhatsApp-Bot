@@ -36,8 +36,8 @@ async def webhook(request: Request):
     print(json.dumps(data, indent=2))
 
     if msg_type == "text":
-    text = msg["text"]["body"].strip().lower()
-    state = get_user_state(sender)
+        text = msg["text"]["body"].strip().lower()
+        state = get_user_state(sender)
 
     if text == "hello":
         send_message(sender, "📧 Please enter your email to begin.")
