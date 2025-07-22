@@ -196,56 +196,56 @@ async def webhook(request: Request):
                     OCR TEXT:
                     \"\"\"{ocr_text}\"\"\"
                     """
-                    try:
-                        sql_response = ask_openai(prompt)
-                        print("OpenAI response:", sql_response)
-                        send_message(sender, sql_response)
-                
-                        # Parse returned tuples
-                        rows = []
-                        for line in sql_response.strip().splitlines():
-                            line = line.strip().rstrip(',')
-                            if line.startswith("(") and line.endswith(")"):
-                                parts = [v.strip().strip("'") for v in line[1:-1].split(",")]
-                                if len(parts) == 8:
-                                    rows.append(parts)
-                
-                        for row in rows:
-                            email, invoice_number, sellers_name, buyers_name, date, item, quantity_str, amount_str = row
-                            quantity = int(quantity_str)
-                            amount = int(amount_str)
-                
-                            # Insert into upload_invoice
-                            insert_result = supabase.table("upload_invoice").insert({
-                                "email": email,
-                                "invoice_number": invoice_number,
-                                "sellers_name": sellers_name,
-                                "buyers_name": buyers_name,
-                                "date": date,
-                                "item": item,
-                                "quantity": quantity,
-                                "amount": amount
-                            }).execute()
-                
-                            # Match in tally_invoice
-                            match_result = supabase.table("tally_invoice").select("*").match({
-                                "invoice_number": invoice_number,
-                                "sellers_name": sellers_name,
-                                "buyers_name": buyers_name,
-                                "date": date,
-                                "item": item,
-                                "quantity": quantity,
-                                "amount": amount
-                            }).execute()
-                
-                            is_match = bool(match_result.data)
-                            print(f"✅ Match found: {is_match}")
-                
-                        send_message(sender, "✅ Invoice uploaded successfully and matched.")
-                
-                    except Exception as e:
-                        print("❌ Error processing invoice:", e)
-                        send_message(sender, "⚠ Failed to process invoice. Try again.")
+                try:
+                    sql_response = ask_openai(prompt)
+                    print("OpenAI response:", sql_response)
+                    send_message(sender, sql_response)
+            
+                    # Parse returned tuples
+                    rows = []
+                    for line in sql_response.strip().splitlines():
+                        line = line.strip().rstrip(',')
+                        if line.startswith("(") and line.endswith(")"):
+                            parts = [v.strip().strip("'") for v in line[1:-1].split(",")]
+                            if len(parts) == 8:
+                                rows.append(parts)
+            
+                    for row in rows:
+                        email, invoice_number, sellers_name, buyers_name, date, item, quantity_str, amount_str = row
+                        quantity = int(quantity_str)
+                        amount = int(amount_str)
+            
+                        # Insert into upload_invoice
+                        insert_result = supabase.table("upload_invoice").insert({
+                            "email": email,
+                            "invoice_number": invoice_number,
+                            "sellers_name": sellers_name,
+                            "buyers_name": buyers_name,
+                            "date": date,
+                            "item": item,
+                            "quantity": quantity,
+                            "amount": amount
+                        }).execute()
+            
+                        # Match in tally_invoice
+                        match_result = supabase.table("tally_invoice").select("*").match({
+                            "invoice_number": invoice_number,
+                            "sellers_name": sellers_name,
+                            "buyers_name": buyers_name,
+                            "date": date,
+                            "item": item,
+                            "quantity": quantity,
+                            "amount": amount
+                        }).execute()
+            
+                        is_match = bool(match_result.data)
+                        print(f"✅ Match found: {is_match}")
+            
+                    send_message(sender, "✅ Invoice uploaded successfully and matched.")
+            
+                except Exception as e:
+                    print("❌ Error processing invoice:", e)
+                    send_message(sender, "⚠ Failed to process invoice. Try again.")
 
             elif intent == "upload_cheque":
                 prompt = f"""
