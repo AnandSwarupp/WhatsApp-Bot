@@ -245,11 +245,11 @@ async def webhook(request: Request):
                     match = re.match(r"insert into (\w+)\s*\(.*?\)\s*values\s*\((.+?)\);?", sql, re.IGNORECASE)
                     if not match:
                         continue
-
+                    
                     table = match.group(1)
                     raw_values = match.group(2)
                     values = [v.strip().strip("'") for v in raw_values.split(",")]
-
+                    
                     if table == "upload_invoice":
                         try:
                             email = values[0]
@@ -260,7 +260,21 @@ async def webhook(request: Request):
                             item = values[5]
                             quantity = int(values[6])
                             amount = int(values[7])
-
+                    
+                            # ✅ Insert properly
+                            insert_result = supabase.table("upload_invoice").insert({
+                                "email": email,
+                                "invoice_number": invoice_number,
+                                "sellers_name": sellers_name,
+                                "buyers_name": buyers_name,
+                                "date": date,
+                                "item": item,
+                                "quantity": quantity,
+                                "amount": amount
+                            }).execute()
+                    
+                            inserted_id = insert_result.data[0]['id']
+                    
                             # Match in tally_invoice
                             match_result = supabase.table("tally_invoice").select("*").match({
                                 "invoice_number": invoice_number,
@@ -271,29 +285,14 @@ async def webhook(request: Request):
                                 "quantity": quantity,
                                 "amount": amount
                             }).execute()
-
-                            print("🔍 Matching against tally_cheque:", {
-                                "payee_name": payee_name,
-                                "senders_name": senders_name,
-                                "amount": amount,
-                                "date": date,
-                                "bank_name": bank_name,
-                                "account_number": account_number
-                            })
-                            print("✅ Match result:", match_result.data)
-
-                            
+                    
                             is_match = bool(match_result.data)
-
-                            # Update tally column
-                            supabase.table("upload_invoice").update({"tally": is_match}).match({
-                                "email": email,
-                                "invoice_number": invoice_number,
-                                "item": item
-                            }).execute()
+                    
+                            # ✅ Update using id
+                            supabase.table("upload_invoice").update({"tally": is_match}).eq("id", inserted_id).execute()
                         except Exception as e:
-                            print("❌ Error updating invoice tally:", e)
-
+                            print("❌ Error inserting/updating invoice tally:", e)
+                    
                     elif table == "upload_cheique":
                         try:
                             email = values[0]
@@ -304,16 +303,20 @@ async def webhook(request: Request):
                             bank_name = values[5]
                             account_number = values[6]
                     
-                            print("🔍 Trying to match in tally_cheque:")
-                            print({
+                            # ✅ Insert properly
+                            insert_result = supabase.table("upload_cheique").insert({
+                                "email": email,
                                 "payee_name": payee_name,
                                 "senders_name": senders_name,
                                 "amount": amount,
                                 "date": date,
                                 "bank_name": bank_name,
                                 "account_number": account_number
-                            })
+                            }).execute()
                     
+                            inserted_id = insert_result.data[0]['id']
+                    
+                            # Match in tally_cheque
                             match_result = supabase.table("tally_cheque").select("*").match({
                                 "payee_name": payee_name,
                                 "senders_name": senders_name,
@@ -323,20 +326,12 @@ async def webhook(request: Request):
                                 "account_number": account_number
                             }).execute()
                     
-                            print("✅ Match result:", match_result.data)
-                    
                             is_match = bool(match_result.data)
-                            print("✅ is_match:", is_match)
                     
-                            update_result = supabase.table("upload_cheique").update({"tally": is_match}).match({
-                                "email": email,
-                                "payee_name": payee_name,
-                                "account_number": account_number
-                            }).execute()
-                    
-                            print("✅ Tally column updated:", update_result)
+                            # ✅ Update using id
+                            supabase.table("upload_cheique").update({"tally": is_match}).eq("id", inserted_id).execute()
                         except Exception as e:
-                            print("❌ Error updating cheque tally:", e)
+                            print("❌ Error inserting/updating cheque tally:", e)
 
                 send_message(sender, "✅ Your document has been uploaded successfully.")
                 send_message(sender, f"🧾 Cheque uploaded. Match found in tally_cheque: {is_match}")
