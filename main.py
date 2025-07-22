@@ -199,7 +199,6 @@ async def webhook(request: Request):
                 try:
                     sql_response = ask_openai(prompt)
                     print("OpenAI response:", sql_response)
-                    send_message(sender, sql_response)
             
                     # Parse returned tuples
                     rows = []
@@ -241,7 +240,7 @@ async def webhook(request: Request):
                         is_match = bool(match_result.data)
                         print(f"✅ Match found: {is_match}")
             
-                    send_message(sender, "✅ Invoice uploaded successfully and matched.")
+                    send_message(sender, f"✅ Invoice uploaded successfully. Match found: {is_match}")
             
                 except Exception as e:
                     print("❌ Error processing invoice:", e)
@@ -280,7 +279,6 @@ async def webhook(request: Request):
 
                 sql_response = ask_openai(prompt)
                 print("SQL to execute:", sql_response)
-                send_message(sender, sql_response)
 
                 # ⚡ Parse values tuples from OpenAI response
                 rows = []
@@ -327,11 +325,8 @@ async def webhook(request: Request):
                     inserted_id = insert_result.data[0]['id']
                     supabase.table("upload_invoice").update({"tally": is_match}).eq("id", inserted_id).execute()
 
+                send_message(sender, f"✅ Cheque uploaded successfully. Match found: {is_match}")
 
-                send_message(sender, "✅ Your document has been uploaded successfully.")
-                send_message(sender, f"🧾 Cheque uploaded. Match found in tally_cheque: {is_match}")
-
-            
             except Exception as e:
                 print("❌ Error during OpenAI/DB processing:", e)
                 send_message(sender, "⚠ Failed to understand or store the document. Try again.")
