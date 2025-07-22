@@ -253,16 +253,16 @@ async def webhook(request: Request):
                     2. No use of Markdown or enclosing query in ```sql or ``` blocks.
                     3. Generate the query in a single line or properly formatted with minimal whitespace.
                     4. Ensure the query uses valid SQL syntax that can be executed directly in SQL Server.
-                    5. Dont use any /n in the code.
-                    6. The name of table is "upload_cheique".
+                    5.Dont use any /n in the code.
+                    6.The name of table is "upload_cheique".
                     
                     Extract the following:
-                    - Account Holder Name (senders_name)
-                    - Receiver Name (payee_name)
-                    - Cheque Date (date in DDMMYYYY format)
-                    - Bank Name (bank_name)
-                    - Account Number (account_number)
-                    - Amount (amount as integer)
+                    - Account Holder Name
+                    - Receiver Name
+                    - Cheque Date (DDMMYYYY)
+                    - Bank Name
+                    - Account Number
+                    - Amount
                     
                     Return one SQL query like:
                     
