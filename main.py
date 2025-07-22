@@ -17,7 +17,7 @@ SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-ACCESS_TOKEN = "EAAR4EKodEE4BPNwy8eCP67ZC08StsuBVnGoGVFZCm7VceY1OEoYLTHP5blMsZCaBpwaPzLXIqz6XrulhACCQ2M3RfTqloeK1rYRANnFcyoPOpTpCnQuBr0LfwfZAMCVDxTcH7wZAL7j3WrdDvuMDZB4FkcNdDlEZBZA6OMQxPRHZAQVDoPRQZChp7FB97rEH48O1iRAYKkBmbAixfqqQROMdzNbckArVXpYWQK2HUMQP33v1JNU0YZD"
+ACCESS_TOKEN = "EAAR4EKodEE4BPLu0S4wGK2SYJrBbm8DLxkVKq00MhzyfvL9sF25nLT4SjQ4d2NPoOdgiM5ZCvmEeC4rRv0n9pzfgIiZAaMA3m9XWwZAkwcbFsP22vps8uIT50HjLOps5jA7DNUI9t8Cclj6xqXVsVRmDJ6ZBM5ZBe2GZCjZAizLR2TGmpoguPGVAC4kZBSJFfmQN0O6qKneZBpGDnu2hfcFCS60FvPLstEw34XPaKMpbaIpRuSQZDZD"
 PHONE_NUMBER_ID = os.getenv("PHONE_NUMBER_ID")
 
 def format_date(raw_date: str) -> str | None:
@@ -190,7 +190,7 @@ async def webhook(request: Request):
                     Insert format:
                     
                     INSERT INTO upload_invoice (email, invoice_number, sellers_name, buyers_name, date, item, quantity, amount)
-                    VALUES ('{email_text}', 'INV001', 'SellerName', 'BuyerName', '2025-07-18', 'Desk', 10, 10000);
+                    VALUES ('{email}', 'INV001', 'SellerName', 'BuyerName', '2025-07-18', 'Desk', 10, 10000);
                     
                     Return one insert per item. Convert amounts to integers. Format dates to YYYY-MM-DD.
                     
@@ -219,7 +219,7 @@ async def webhook(request: Request):
                     Return one SQL query like:
                     
                     INSERT INTO upload_cheique (email, payee_name, senders_name, amount, date, bank_name, account_number)
-                    VALUES ('{email_text}', 'Receiver Name', 'Sender Name', 5000, '2025-07-01', 'Bank Name', '1234567890');
+                    VALUES ('{email}', 'Receiver Name', 'Sender Name', 5000, '2025-07-01', 'Bank Name', '1234567890');
                     
                     Convert amount to integer, format date as YYYY-MM-DD.
                     
