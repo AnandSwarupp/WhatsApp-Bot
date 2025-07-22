@@ -306,15 +306,6 @@ async def webhook(request: Request):
                             # ✏ Run raw SQL from OpenAI first
                             run_sql_on_supabase(sql)
                         
-                            # ✅ Now get the latest id from upload_cheique
-                            max_id_result = supabase.table("upload_cheique") \
-                                .select("id") \
-                                .order("id", desc=True) \
-                                .limit(1) \
-                                .execute()
-                        
-                            inserted_id = max_id_result.data[0]["id"]
-                        
                             # 🔍 Match in tally_cheque
                             match_result = supabase.table("tally_cheque").select("*").match({
                                 "payee_name": payee_name,
@@ -326,9 +317,6 @@ async def webhook(request: Request):
                             }).execute()
                         
                             is_match = bool(match_result.data)
-                        
-                            # ✏ Update tally column in upload_cheique for that id
-                            supabase.table("upload_cheique").update({"tally": is_match}).eq("id", inserted_id).execute()
                         
                         except Exception as e:
                             print("❌ Error updating cheque tally:", e)
