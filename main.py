@@ -180,28 +180,72 @@ async def webhook(request: Request):
                 prompt = f"""
                     You are an intelligent invoice parser.
                     
-                    From the OCR text below, extract all the relevant invoice items and return a list of SQL INSERT statements.
-                    1. Only return the SQL query as plain text without any description, comments, code blocks, or extra characters.
-                    2. No use of Markdown or enclosing query in ```sql or ``` blocks.
-                    3. Generate the query in a single line or properly formatted with minimal whitespace.
-                    4. Ensure the query uses valid SQL syntax that can be executed directly in SQL Server.
-                    5.Dont use any /n in the code.
+                    From the OCR text below, extract invoice number, seller name, buyer name, date, and each item with quantity & amount.
                     
-                    Insert format:
+                    Return only multiple VALUES tuples in this format:
+                    (email, invoice_number, sellers_name, buyers_name, date, item, quantity, amount)
                     
-                    Return only multiple VALUES tuples for:
-                    (invoice_number, sellers_name, buyers_name, date, item, quantity, amount)
+                    For example, output exactly like this:
+                    ('{email}', 'INV001', 'SellerName', 'BuyerName', '2025-07-18', 'Desk', 10, 10000),
+                    ('{email}', 'INV001', 'SellerName', 'BuyerName', '2025-07-18', 'Chair', 5, 5000)
                     
-                    Example:
-                    ('INV001', 'SellerName', 'BuyerName', '2025-07-18', 'Desk', 10, 10000),
-                    ('INV001', 'SellerName', 'BuyerName', '2025-07-18', 'Chair', 5, 5000)
-                    
-                    ⚠ Do NOT include email; backend will add it.
-                    Convert amounts to integers. Format dates to YYYY-MM-DD.
+                    ⚠ Include the email as '{email}' in each tuple (taken from the user session).
+                    Convert amounts to integers. Format date to YYYY-MM-DD.
+                    Do NOT add INSERT INTO statement, comments, explanation, or code blocks — only the raw tuples separated by commas.
                     
                     OCR TEXT:
                     \"\"\"{ocr_text}\"\"\"
-                                    """
+                    """
+                    try:
+                        sql_response = ask_openai(prompt)
+                        print("OpenAI response:", sql_response)
+                        send_message(sender, sql_response)
+                
+                        # Parse returned tuples
+                        rows = []
+                        for line in sql_response.strip().splitlines():
+                            line = line.strip().rstrip(',')
+                            if line.startswith("(") and line.endswith(")"):
+                                parts = [v.strip().strip("'") for v in line[1:-1].split(",")]
+                                if len(parts) == 8:
+                                    rows.append(parts)
+                
+                        for row in rows:
+                            email, invoice_number, sellers_name, buyers_name, date, item, quantity_str, amount_str = row
+                            quantity = int(quantity_str)
+                            amount = int(amount_str)
+                
+                            # Insert into upload_invoice
+                            insert_result = supabase.table("upload_invoice").insert({
+                                "email": email,
+                                "invoice_number": invoice_number,
+                                "sellers_name": sellers_name,
+                                "buyers_name": buyers_name,
+                                "date": date,
+                                "item": item,
+                                "quantity": quantity,
+                                "amount": amount
+                            }).execute()
+                
+                            # Match in tally_invoice
+                            match_result = supabase.table("tally_invoice").select("*").match({
+                                "invoice_number": invoice_number,
+                                "sellers_name": sellers_name,
+                                "buyers_name": buyers_name,
+                                "date": date,
+                                "item": item,
+                                "quantity": quantity,
+                                "amount": amount
+                            }).execute()
+                
+                            is_match = bool(match_result.data)
+                            print(f"✅ Match found: {is_match}")
+                
+                        send_message(sender, "✅ Invoice uploaded successfully and matched.")
+                
+                    except Exception as e:
+                        print("❌ Error processing invoice:", e)
+                        send_message(sender, "⚠ Failed to process invoice. Try again.")
 
             elif intent == "upload_cheque":
                 prompt = f"""
@@ -282,66 +326,6 @@ async def webhook(request: Request):
                     # Update tally
                     inserted_id = insert_result.data[0]['id']
                     supabase.table("upload_invoice").update({"tally": is_match}).eq("id", inserted_id).execute()
-
-                    
-                    if table == "upload_invoice":
-                        try:
-                            email = values[0]
-                            invoice_number = values[1]
-                            sellers_name = values[2]
-                            buyers_name = values[3]
-                            date = values[4]
-                            item = values[5]
-                            quantity = int(values[6])
-                            amount = int(values[7])
-                    
-                            # ✏ Run raw SQL from OpenAI first
-                            run_sql_on_supabase(sql)
-                    
-                            # 🔍 Match in tally_invoice
-                            match_result = supabase.table("tally_invoice").select("*").match({
-                                "invoice_number": invoice_number,
-                                "sellers_name": sellers_name,
-                                "buyers_name": buyers_name,
-                                "date": date,
-                                "item": item,
-                                "quantity": quantity,
-                                "amount": amount
-                            }).execute()
-                    
-                            is_match = bool(match_result.data)
-                            print("✅ Invoice match found:" if is_match else "⚠️ Invoice match not found")
-                    
-                        except Exception as e:
-                            print("❌ Error matching invoice tally:", e)
-                    
-                    elif table == "upload_cheique":
-                        try:
-                            email = values[0]
-                            payee_name = values[1]
-                            senders_name = values[2]
-                            amount = int(values[3])
-                            date = values[4]
-                            bank_name = values[5]
-                            account_number = values[6]
-                        
-                            # ✏ Run raw SQL from OpenAI first
-                            run_sql_on_supabase(sql)
-                        
-                            # 🔍 Match in tally_cheque
-                            match_result = supabase.table("tally_cheque").select("*").match({
-                                "payee_name": payee_name,
-                                "senders_name": senders_name,
-                                "amount": amount,
-                                "date": date,
-                                "bank_name": bank_name,
-                                "account_number": account_number
-                            }).execute()
-                        
-                            is_match = bool(match_result.data)
-                        
-                        except Exception as e:
-                            print("❌ Error updating cheque tally:", e)
 
 
                 send_message(sender, "✅ Your document has been uploaded successfully.")
