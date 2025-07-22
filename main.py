@@ -254,7 +254,7 @@ async def webhook(request: Request):
                     3. Generate the query in a single line or properly formatted with minimal whitespace.
                     4. Ensure the query uses valid SQL syntax that can be executed directly in SQL Server.
                     5. Dont use any /n in the code.
-                    6. The name of table is "upload_cheque".
+                    6. The name of table is "upload_cheique".
                     
                     Extract the following:
                     - Account Holder Name (senders_name)
@@ -266,7 +266,7 @@ async def webhook(request: Request):
                     
                     Return one SQL query like:
                     
-                    INSERT INTO upload_cheque (email, payee_name, senders_name, amount, date, bank_name, account_number)
+                    INSERT INTO upload_cheique (email, payee_name, senders_name, amount, date, bank_name, account_number)
                     VALUES ('{email}', 'Receiver Name', 'Sender Name', 5000, '2025-07-01', 'Bank Name', '1234567890');
                     
                     Convert amount to integer, format date as YYYY-MM-DD.
