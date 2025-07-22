@@ -209,10 +209,23 @@ async def webhook(request: Request):
                             if len(parts) == 8:
                                 rows.append(parts)
             
+                    # Store match results for all items
+                    all_matches = []
+                    invoice_details = None
+            
                     for row in rows:
                         email, invoice_number, sellers_name, buyers_name, date, item, quantity_str, amount_str = row
                         quantity = int(quantity_str)
                         amount = int(amount_str)
+            
+                        # Store first invoice details for summary
+                        if invoice_details is None:
+                            invoice_details = {
+                                "invoice_number": invoice_number,
+                                "sellers_name": sellers_name,
+                                "buyers_name": buyers_name,
+                                "date": date
+                            }
             
                         # Insert into upload_invoice
                         insert_result = supabase.table("upload_invoice").insert({
@@ -237,14 +250,28 @@ async def webhook(request: Request):
                             "amount": amount
                         }).execute()
             
-                        is_match = bool(match_result.data)
+                        all_matches.append(bool(match_result.data))
+            
+                    # Send one comprehensive response
+                    if invoice_details:
+                        match_count = sum(all_matches)
+                        total_items = len(all_matches)
                         
-                        send_message(sender, "✅ Invoice uploaded successfully.")
-                        send_message(sender, f"🧾 Match found : {'Yes' if is_match else 'No'}")
+                        response = f"""
+            ✅ Invoice {invoice_details['invoice_number']} processed
+            📅 Date: {invoice_details['date']}
+            👤 Seller: {invoice_details['sellers_name']}
+            👥 Buyer: {invoice_details['buyers_name']}
+            📊 Items: {total_items} ({match_count} matched)
+                        """
+                        send_message(sender, response.strip())
+                    else:
+                        send_message(sender, "✅ Invoice processed (no items found)")
             
                 except Exception as e:
                     print("❌ Error processing invoice:", e)
                     send_message(sender, "⚠ Failed to process invoice. Try again.")
+
 
             elif intent == "upload_cheque":
                 prompt = f"""
