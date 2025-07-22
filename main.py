@@ -60,7 +60,6 @@ async def webhook(request: Request):
             if state == "awaiting_email":
                 set_user_email(sender, text.lower())
                 email = text
-                email_text = text
 
                 # Check if user is registered
                 result = supabase.table("users").select("email").eq("email", email).execute()
@@ -190,7 +189,7 @@ async def webhook(request: Request):
                     Insert format:
                     
                     INSERT INTO upload_invoice (email, invoice_number, sellers_name, buyers_name, date, item, quantity, amount)
-                    VALUES ('{email_text}', 'INV001', 'SellerName', 'BuyerName', '2025-07-18', 'Desk', 10, 10000);
+                    VALUES ('{email}', 'INV001', 'SellerName', 'BuyerName', '2025-07-18', 'Desk', 10, 10000);
                     
                     Return one insert per item. Convert amounts to integers. Format dates to YYYY-MM-DD.
                     
@@ -219,7 +218,7 @@ async def webhook(request: Request):
                     Return one SQL query like:
                     
                     INSERT INTO upload_cheique (email, payee_name, senders_name, amount, date, bank_name, account_number)
-                    VALUES ('{email_text}', 'Receiver Name', 'Sender Name', 5000, '2025-07-01', 'Bank Name', '1234567890');
+                    VALUES ('{email}', 'Receiver Name', 'Sender Name', 5000, '2025-07-01', 'Bank Name', '1234567890');
                     
                     Convert amount to integer, format date as YYYY-MM-DD.
                     
