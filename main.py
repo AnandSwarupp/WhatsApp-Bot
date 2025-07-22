@@ -272,6 +272,17 @@ async def webhook(request: Request):
                                 "amount": amount
                             }).execute()
 
+                            print("🔍 Matching against tally_cheque:", {
+                                "payee_name": payee_name,
+                                "senders_name": senders_name,
+                                "amount": amount,
+                                "date": date,
+                                "bank_name": bank_name,
+                                "account_number": account_number
+                            })
+                            print("✅ Match result:", match_result.data)
+
+                            
                             is_match = bool(match_result.data)
 
                             # Update tally column
