@@ -9,8 +9,6 @@ from ocr import ocr_from_bytes
 from openai_utils import ask_openai
 from datetime import datetime
 import re
-from auth import get_user_state, set_user_state, get_user_intent
-from sql_flow import handle_sql_generation, update_missing_field
 
 app = FastAPI()
 
