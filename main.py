@@ -189,10 +189,15 @@ async def webhook(request: Request):
                     
                     Insert format:
                     
-                    INSERT INTO upload_invoice (email, invoice_number, sellers_name, buyers_name, date, item, quantity, amount)
-                    VALUES ('{email}', 'INV001', 'SellerName', 'BuyerName', '2025-07-18', 'Desk', 10, 10000);
+                    Return only multiple VALUES tuples for:
+                    (invoice_number, sellers_name, buyers_name, date, item, quantity, amount)
                     
-                    Return one insert per item. Convert amounts to integers. Format dates to YYYY-MM-DD.
+                    Example:
+                    ('INV001', 'SellerName', 'BuyerName', '2025-07-18', 'Desk', 10, 10000),
+                    ('INV001', 'SellerName', 'BuyerName', '2025-07-18', 'Chair', 5, 5000)
+                    
+                    ⚠ Do NOT include email; backend will add it.
+                    Convert amounts to integers. Format dates to YYYY-MM-DD.
                     
                     OCR TEXT:
                     \"\"\"{ocr_text}\"\"\"
@@ -233,22 +238,51 @@ async def webhook(request: Request):
                 print("SQL to execute:", sql_response)
                 send_message(sender, sql_response)
 
-                for line in sql_response.splitlines():
-                    sql = line.strip()
-                    if not sql.lower().startswith("insert into"):
-                        continue
+                # ⚡ Parse values tuples from OpenAI response
+                rows = []
+                for line in sql_response.strip().splitlines():
+                    line = line.strip().rstrip(',')
+                    if line.startswith("(") and line.endswith(")"):
+                        parts = [v.strip().strip("'") for v in line[1:-1].split(",")]
+                        if len(parts) == 7:  # invoice_number, sellers_name, buyers_name, date, item, quantity, amount
+                            rows.append(parts)
+                
+                for row in rows:
+                    invoice_number, sellers_name, buyers_name, date, item, quantity_str, amount_str = row
+                    quantity = int(quantity_str)
+                    amount = int(amount_str)
+                
+                    email = get_user_email(sender)  # ✅ always from session
+                
+                    # Insert
+                    insert_result = supabase.table("upload_invoice").insert({
+                        "email": email,
+                        "invoice_number": invoice_number,
+                        "sellers_name": sellers_name,
+                        "buyers_name": buyers_name,
+                        "date": date,
+                        "item": item,
+                        "quantity": quantity,
+                        "amount": amount
+                    }).execute()
+                
+                    # Match in tally_invoice
+                    match_result = supabase.table("tally_invoice").select("*").match({
+                        "invoice_number": invoice_number,
+                        "sellers_name": sellers_name,
+                        "buyers_name": buyers_name,
+                        "date": date,
+                        "item": item,
+                        "quantity": quantity,
+                        "amount": amount
+                    }).execute()
+                
+                    is_match = bool(match_result.data)
+                
+                    # Update tally
+                    inserted_id = insert_result.data[0]['id']
+                    supabase.table("upload_invoice").update({"tally": is_match}).eq("id", inserted_id).execute()
 
-                    # 1. Run insert
-                    run_sql_on_supabase(sql)
-
-                    # 2. Extract table and values
-                    match = re.match(r"insert into (\w+)\s*\(.*?\)\s*values\s*\((.+?)\);?", sql, re.IGNORECASE)
-                    if not match:
-                        continue
-                    
-                    table = match.group(1)
-                    raw_values = match.group(2)
-                    values = [v.strip().strip("'") for v in raw_values.split(",")]
                     
                     if table == "upload_invoice":
                         try:
