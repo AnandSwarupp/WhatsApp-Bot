@@ -302,8 +302,8 @@ async def webhook(request: Request):
                             date = values[4]
                             bank_name = values[5]
                             account_number = values[6]
-                    
-                            # ✅ Insert properly
+                        
+                            # Insert using SDK
                             insert_result = supabase.table("upload_cheique").insert({
                                 "email": email,
                                 "payee_name": payee_name,
@@ -313,9 +313,9 @@ async def webhook(request: Request):
                                 "bank_name": bank_name,
                                 "account_number": account_number
                             }).execute()
-                    
-                            inserted_id = insert_result.data[0]['id']
-                    
+                        
+                            inserted_id = insert_result.data[0]["id"]
+                        
                             # Match in tally_cheque
                             match_result = supabase.table("tally_cheque").select("*").match({
                                 "payee_name": payee_name,
@@ -325,13 +325,15 @@ async def webhook(request: Request):
                                 "bank_name": bank_name,
                                 "account_number": account_number
                             }).execute()
-                    
+                        
                             is_match = bool(match_result.data)
-                    
-                            # ✅ Update using id
+                        
+                            # Update tally column
                             supabase.table("upload_cheique").update({"tally": is_match}).eq("id", inserted_id).execute()
+                        
                         except Exception as e:
-                            print("❌ Error inserting/updating cheque tally:", e)
+                            print("❌ Error updating cheque tally:", e)
+
 
                 send_message(sender, "✅ Your document has been uploaded successfully.")
                 send_message(sender, f"🧾 Cheque uploaded. Match found in tally_cheque: {is_match}")
