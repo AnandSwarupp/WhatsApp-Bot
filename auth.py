@@ -1,47 +1,48 @@
 import random
 import smtplib
+import os
 from email.message import EmailMessage
+from supabase import create_client
 
+# Email credentials
 EMAIL_USER = "dinoboyadi@gmail.com"
 EMAIL_PASSWORD = "esahoznfsipmqjcq"
 
-user_states = {}
-user_emails = {}
-user_otps = {}
-user_intent = {}
+# Supabase client setup
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-authenticated_users = set()
+# Session management using Supabase
+def get_session(sender):
+    res = supabase.table("user_sessions").select("*").eq("whatsapp", sender).execute()
+    return res.data[0] if res.data else {}
 
-def get_user_state(sender):
-    return user_states.get(sender)
-
-def set_user_state(sender, state):
-    user_states[sender] = state
-
-def set_user_email(sender, email):
-    user_emails[sender] = email
-
-def get_user_email(sender):
-    return user_emails.get(sender)
-
-def set_user_otp(sender, otp):
-    user_otps[sender] = otp
-
-def get_user_otp(sender):
-    return user_otps.get(sender)
+def update_session(sender, data: dict):
+    current = get_session(sender)
+    updated = {**current, **data, "whatsapp": sender}
+    supabase.table("user_sessions").upsert(updated).execute()
 
 def clear_user(sender):
-    user_states.pop(sender, None)
-    user_otps.pop(sender, None)
-    user_emails.pop(sender, None)
+    supabase.table("user_sessions").delete().eq("whatsapp", sender).execute()
 
-def mark_authenticated(sender):
-    authenticated_users.add(sender)
-    set_user_state(sender, "authenticated")
+# Session field helpers
+def get_user_state(sender): return get_session(sender).get("state")
+def set_user_state(sender, state): update_session(sender, {"state": state})
 
-def is_authenticated(sender):
-    return sender in authenticated_users
+def get_user_email(sender): return get_session(sender).get("email")
+def set_user_email(sender, email): update_session(sender, {"email": email})
 
+def get_user_otp(sender): return get_session(sender).get("otp")
+def set_user_otp(sender, otp): update_session(sender, {"otp": otp})
+
+def get_user_intent(sender): return get_session(sender).get("intent", "unknown")
+def set_user_intent(sender, intent): update_session(sender, {"intent": intent})
+
+def is_authenticated(sender): return get_user_email(sender) is not None
+def mark_authenticated(sender): pass  # Already handled via set_user_email()
+
+# OTP email logic
 def send_otp_email(to_email: str, otp: str):
     msg = EmailMessage()
     msg.set_content(f"Your FinBot verification code is: {otp}")
@@ -63,9 +64,3 @@ def generate_and_send_otp(sender, email):
     set_user_otp(sender, otp)
     set_user_state(sender, "awaiting_otp")
     send_otp_email(email, otp)
-
-def set_user_intent(sender, intent):
-    user_intent[sender] = intent
-
-def get_user_intent(sender):
-    return user_intent.get(sender, "unknown")
