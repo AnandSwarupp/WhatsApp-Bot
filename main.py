@@ -238,10 +238,9 @@ async def webhook(request: Request):
                         }).execute()
             
                         is_match = bool(match_result.data)
+                        
                         send_message(sender, "✅ Invoice uploaded successfully.")
                         send_message(sender, f"🧾 Match found : {'Yes' if is_match else 'No'}")
-            
-                    send_message(sender, f"✅ Invoice uploaded successfully. Match found: {is_match}")
             
                 except Exception as e:
                     print("❌ Error processing invoice:", e)
