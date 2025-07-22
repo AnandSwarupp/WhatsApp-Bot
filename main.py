@@ -303,20 +303,19 @@ async def webhook(request: Request):
                             bank_name = values[5]
                             account_number = values[6]
                         
-                            # Insert using SDK
-                            insert_result = supabase.table("upload_cheique").insert({
-                                "email": email,
-                                "payee_name": payee_name,
-                                "senders_name": senders_name,
-                                "amount": amount,
-                                "date": date,
-                                "bank_name": bank_name,
-                                "account_number": account_number
-                            }).execute()
+                            # ✏ Run raw SQL from OpenAI first
+                            run_sql_on_supabase(sql)
                         
-                            inserted_id = insert_result.data[0]["id"]
+                            # ✅ Now get the latest id from upload_cheique
+                            max_id_result = supabase.table("upload_cheique") \
+                                .select("id") \
+                                .order("id", desc=True) \
+                                .limit(1) \
+                                .execute()
                         
-                            # Match in tally_cheque
+                            inserted_id = max_id_result.data[0]["id"]
+                        
+                            # 🔍 Match in tally_cheque
                             match_result = supabase.table("tally_cheque").select("*").match({
                                 "payee_name": payee_name,
                                 "senders_name": senders_name,
@@ -328,7 +327,7 @@ async def webhook(request: Request):
                         
                             is_match = bool(match_result.data)
                         
-                            # Update tally column
+                            # ✏ Update tally column in upload_cheique for that id
                             supabase.table("upload_cheique").update({"tally": is_match}).eq("id", inserted_id).execute()
                         
                         except Exception as e:
