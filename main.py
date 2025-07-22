@@ -1,18 +1,23 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
-import requests, os, json
+import requests, os, json, re
+from datetime import datetime
+
 from supabase import create_client, Client
-from auth import *
+from auth import (
+    get_user_state, set_user_state, get_user_intent, set_user_intent,
+    set_user_email, get_user_email, set_user_otp, get_user_otp,
+    mark_authenticated, is_authenticated, clear_user
+)
 from whatsapp import send_button_message
 from messenger import send_message
 from ocr import ocr_from_bytes
 from openai_utils import ask_openai
-from datetime import datetime
-import re
+from sql_flow import handle_sql_generation, update_missing_field
 
 app = FastAPI()
 
-# Supabase setup
+# Supabase Setup
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
@@ -47,21 +52,30 @@ async def webhook(request: Request):
         sender = msg["from"]
         msg_type = msg["type"]
         state = get_user_state(sender)
+        intent = get_user_intent(sender)
 
         if msg_type == "text":
-            text = msg["text"]["body"].strip().lower()
-            state = get_user_state(sender)
+            text = msg["text"]["body"].strip()
 
-            if text == "hello":
+            if state == "awaiting_missing_field":
+                update_missing_field(sender, text)
+                return {"status": "ok"}
+
+            if intent in ["upload_invoice", "upload_cheque"]:
+                handle_sql_generation(sender, text, intent)
+                set_user_state(sender, "awaiting_missing_field")
+                return {"status": "ok"}
+
+            # STARTUP FLOW
+            text_lower = text.lower()
+            if text_lower == "hello":
                 send_message(sender, "📧 Please enter your email to begin.")
                 set_user_state(sender, "awaiting_email")
                 return {"status": "ok"}
 
             if state == "awaiting_email":
-                set_user_email(sender, text.lower())
-                email = text
-
-                # Check if user is registered
+                set_user_email(sender, text_lower)
+                email = text_lower
                 result = supabase.table("users").select("email").eq("email", email).execute()
                 if result.data:
                     # Registered → ask for OTP
@@ -120,19 +134,17 @@ async def webhook(request: Request):
                     send_message(sender, "❌ Incorrect OTP. Try again.")
                 return {"status": "ok"}
 
-            if text == "status":
+            if text_lower == "status":
                 send_message(sender, f"📌 State: {get_user_state(sender)} | Authenticated: {is_authenticated(sender)}")
                 return {"status": "ok"}
 
             send_message(sender, "👋 Please say 'hello' to get started.")
             return {"status": "ok"}
 
-
         if not is_authenticated(sender):
             send_message(sender, "🔒 Please verify by saying 'hello' first.")
             return {"status": "ok"}
 
-        # Button flow
         if msg_type == "interactive":
             button_id = msg["interactive"]["button_reply"]["id"]
             set_user_intent(sender, button_id)
@@ -143,7 +155,6 @@ async def webhook(request: Request):
                 send_message(sender, "📤 Please upload a scanned cheque.")
             return {"status": "ok"}
 
-        # Media handling
         if msg_type in ["image", "document"]:
             intent = get_user_intent(sender)
             if intent not in ["upload_invoice", "upload_cheque"]:
@@ -173,152 +184,10 @@ async def webhook(request: Request):
                 send_message(sender, "❌ OCR failed. Please upload a clear image or PDF.")
                 return {"status": "ok"}
 
-            email = get_user_email(sender)
-
-            if intent == "upload_invoice":
-                prompt = f"""
-                    You are an intelligent invoice parser.
-                    
-                    From the OCR text below, extract all the relevant invoice items and return a list of SQL INSERT statements.
-                    1. Only return the SQL query as plain text without any description, comments, code blocks, or extra characters.
-                    2. No use of Markdown or enclosing query in ```sql or ``` blocks.
-                    3. Generate the query in a single line or properly formatted with minimal whitespace.
-                    4. Ensure the query uses valid SQL syntax that can be executed directly in SQL Server.
-                    5.Dont use any /n in the code.
-                    
-                    Insert format:
-                    
-                    INSERT INTO upload_invoice (email, invoice_number, sellers_name, buyers_name, date, item, quantity, amount)
-                    VALUES ('{email}', 'INV001', 'SellerName', 'BuyerName', '2025-07-18', 'Desk', 10, 10000);
-                    
-                    Return one insert per item. Convert amounts to integers. Format dates to YYYY-MM-DD.
-                    
-                    OCR TEXT:
-                    \"\"\"{ocr_text}\"\"\"
-                                    """
-
-            elif intent == "upload_cheque":
-                prompt = f"""
-                    You are an intelligent cheque parser.
-                    1. Only return the SQL query as plain text without any description, comments, code blocks, or extra characters.
-                    2. No use of Markdown or enclosing query in ```sql or ``` blocks.
-                    3. Generate the query in a single line or properly formatted with minimal whitespace.
-                    4. Ensure the query uses valid SQL syntax that can be executed directly in SQL Server.
-                    5.Dont use any /n in the code.
-                    6.The name of table is "upload_cheique".
-                    
-                    Extract the following:
-                    - Account Holder Name
-                    - Receiver Name
-                    - Cheque Date (DDMMYYYY)
-                    - Bank Name
-                    - Account Number
-                    - Amount
-                    
-                    Return one SQL query like:
-                    
-                    INSERT INTO upload_cheique (email, payee_name, senders_name, amount, date, bank_name, account_number)
-                    VALUES ('{email}', 'Receiver Name', 'Sender Name', 5000, '2025-07-01', 'Bank Name', '1234567890');
-                    
-                    Convert amount to integer, format date as YYYY-MM-DD.
-                    
-                    OCR TEXT:
-                    \"\"\"{ocr_text}\"\"\"
-                """
-
-            try:
-
-                sql_response = ask_openai(prompt)
-                print("SQL to execute:", sql_response)
-                send_message(sender, sql_response)
-
-                for line in sql_response.splitlines():
-                    sql = line.strip()
-                    if not sql.lower().startswith("insert into"):
-                        continue
-
-                    # 1. Run insert
-                    run_sql_on_supabase(sql)
-
-                    # 2. Extract table and values
-                    match = re.match(r"insert into (\w+)\s*\(.*?\)\s*values\s*\((.+?)\);?", sql, re.IGNORECASE)
-                    if not match:
-                        continue
-
-                    table = match.group(1)
-                    raw_values = match.group(2)
-                    values = [v.strip().strip("'") for v in raw_values.split(",")]
-
-                    if table == "upload_invoice":
-                        try:
-                            email = values[0]
-                            invoice_number = values[1]
-                            sellers_name = values[2]
-                            buyers_name = values[3]
-                            date = values[4]
-                            item = values[5]
-                            quantity = int(values[6])
-                            amount = int(values[7])
-
-                            # Match in tally_invoice
-                            match_result = supabase.table("tally_invoice").select("*").match({
-                                "invoice_number": invoice_number,
-                                "sellers_name": sellers_name,
-                                "buyers_name": buyers_name,
-                                "date": date,
-                                "item": item,
-                                "quantity": quantity,
-                                "amount": amount
-                            }).execute()
-
-                            is_match = bool(match_result.data)
-
-                            # Update tally column
-                            supabase.table("upload_invoice").update({"tally": is_match}).match({
-                                "email": email,
-                                "invoice_number": invoice_number,
-                                "item": item
-                            }).execute()
-                        except Exception as e:
-                            print("❌ Error updating invoice tally:", e)
-
-                    elif table == "upload_cheique":
-                        try:
-                            email = values[0]
-                            payee_name = values[1]
-                            senders_name = values[2]
-                            amount = int(values[3])
-                            date = values[4]
-                            bank_name = values[5]
-                            account_number = values[6]
-
-                            # Match in tally_cheque
-                            match_result = supabase.table("tally_cheque").select("*").match({
-                                "payee_name": payee_name,
-                                "senders_name": senders_name,
-                                "amount": amount,
-                                "date": date,
-                                "bank_name": bank_name,
-                                "account_number": account_number
-                            }).execute()
-
-                            is_match = bool(match_result.data)
-
-                            # Update tally column
-                            supabase.table("upload_cheique").update({"tally": is_match}).match({
-                                "email": email,
-                                "payee_name": payee_name,
-                                "account_number": account_number
-                            }).execute()
-                        except Exception as e:
-                            print("❌ Error updating cheque tally:", e)
-
-
-                send_message(sender, "✅ Your document has been uploaded successfully.")
-
-            except Exception as e:
-                print("❌ Error during OpenAI/DB processing:", e)
-                send_message(sender, "⚠ Failed to understand or store the document. Try again.")
+            # Send to user for confirmation or start field filling
+            send_message(sender, "🧾 Got the text! Please confirm or send missing values:")
+            handle_sql_generation(sender, ocr_text, intent)
+            set_user_state(sender, "awaiting_missing_field")
 
     except Exception as e:
         print("❌ Unhandled error:", e)
