@@ -303,8 +303,17 @@ async def webhook(request: Request):
                             date = values[4]
                             bank_name = values[5]
                             account_number = values[6]
-
-                            # Match in tally_cheque
+                    
+                            print("🔍 Trying to match in tally_cheque:")
+                            print({
+                                "payee_name": payee_name,
+                                "senders_name": senders_name,
+                                "amount": amount,
+                                "date": date,
+                                "bank_name": bank_name,
+                                "account_number": account_number
+                            })
+                    
                             match_result = supabase.table("tally_cheque").select("*").match({
                                 "payee_name": payee_name,
                                 "senders_name": senders_name,
@@ -313,21 +322,26 @@ async def webhook(request: Request):
                                 "bank_name": bank_name,
                                 "account_number": account_number
                             }).execute()
-
+                    
+                            print("✅ Match result:", match_result.data)
+                    
                             is_match = bool(match_result.data)
-
-                            # Update tally column
-                            supabase.table("upload_cheique").update({"tally": is_match}).match({
+                            print("✅ is_match:", is_match)
+                    
+                            update_result = supabase.table("upload_cheique").update({"tally": is_match}).match({
                                 "email": email,
                                 "payee_name": payee_name,
                                 "account_number": account_number
                             }).execute()
+                    
+                            print("✅ Tally column updated:", update_result)
                         except Exception as e:
                             print("❌ Error updating cheque tally:", e)
 
-
                 send_message(sender, "✅ Your document has been uploaded successfully.")
+                send_message(sender, f"🧾 Cheque uploaded. Match found in tally_cheque: {is_match}")
 
+            
             except Exception as e:
                 print("❌ Error during OpenAI/DB processing:", e)
                 send_message(sender, "⚠ Failed to understand or store the document. Try again.")
