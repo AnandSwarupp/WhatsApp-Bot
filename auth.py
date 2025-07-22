@@ -13,6 +13,8 @@ SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
+user_intent = {}
+
 # Session management using Supabase
 def get_session(sender):
     res = supabase.table("user_sessions").select("*").eq("whatsapp", sender).execute()
@@ -64,3 +66,17 @@ def generate_and_send_otp(sender, email):
     set_user_otp(sender, otp)
     set_user_state(sender, "awaiting_otp")
     send_otp_email(email, otp)
+
+def set_user_intent(sender, intent):
+    user_intent[sender] = intent
+
+def get_user_intent(sender):
+    return user_intent.get(sender, {})
+
+def clear_user(sender):
+    user_states.pop(sender, None)
+    user_otps.pop(sender, None)
+    user_emails.pop(sender, None)
+    user_intent.pop(sender, None)
+    authenticated_users.discard(sender)
+
