@@ -261,21 +261,10 @@ async def webhook(request: Request):
                             quantity = int(values[6])
                             amount = int(values[7])
                     
-                            # ✅ Insert properly
-                            insert_result = supabase.table("upload_invoice").insert({
-                                "email": email,
-                                "invoice_number": invoice_number,
-                                "sellers_name": sellers_name,
-                                "buyers_name": buyers_name,
-                                "date": date,
-                                "item": item,
-                                "quantity": quantity,
-                                "amount": amount
-                            }).execute()
+                            # ✏ Run raw SQL from OpenAI first
+                            run_sql_on_supabase(sql)
                     
-                            inserted_id = insert_result.data[0]['id']
-                    
-                            # Match in tally_invoice
+                            # 🔍 Match in tally_invoice
                             match_result = supabase.table("tally_invoice").select("*").match({
                                 "invoice_number": invoice_number,
                                 "sellers_name": sellers_name,
@@ -287,11 +276,10 @@ async def webhook(request: Request):
                             }).execute()
                     
                             is_match = bool(match_result.data)
+                            print("✅ Invoice match found:" if is_match else "⚠️ Invoice match not found")
                     
-                            # ✅ Update using id
-                            supabase.table("upload_invoice").update({"tally": is_match}).eq("id", inserted_id).execute()
                         except Exception as e:
-                            print("❌ Error inserting/updating invoice tally:", e)
+                            print("❌ Error matching invoice tally:", e)
                     
                     elif table == "upload_cheique":
                         try:
