@@ -18,7 +18,7 @@ SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-ACCESS_TOKEN = "EAAR4EKodEE4BPPPuSK5lVDIoPsX9lR7RgBwVuSbWGvYTdIGcpoxEfpNXF2e6Yt0uPFNaTW2DZAMw8U98iRCtMU9bolZCCIqnHZCRGOl89Ck3bCLG0FJyZCalvgfruKqHtDGuK7XHFbqCuiBwvkKYqL24ZBNzb4tyZCLRLQAMbyPYxDyYMuCJQ4VCWfxWZAG9x3RBWRJa0rChx887XO8uKgPqyAVrQU3wjgwttdMEU8mDXRCKAZDZD"
+ACCESS_TOKEN = "EAAR4EKodEE4BPF9D4cqV3WlD3mwKCrOhv3g3ZB7rlOolwOeifCCXoouHURgHr2CSqiRuZBPbV55GgYlvZAYm4a0h2lj6Hl7Hwzns51R56eTL3Q4aVDl1kXX4qLOtJyzIVfZAo8qdrc2tZCSAdt3ZCCiRO4T9A6tTGdLd04MlryfOdl0nyee4AG0e55A4RgcDAFtHJ4TaERqMKZCXVJnbkijkQOyCUrAQ7NzwomKUmkWnJYCyQZDZD"
 PHONE_NUMBER_ID = os.getenv("PHONE_NUMBER_ID")
 
 def format_date(raw_date: str) -> str | None:
@@ -233,7 +233,7 @@ async def webhook(request: Request):
             if state == "awaiting_otp":
                 if text == get_user_otp(sender):
                     mark_authenticated(sender)
-                    clear_user(sender)
+                    clear_user_session(sender)
                     send_message(sender, "✅ OTP verified! You're now logged in.")
                     send_button_message(sender)
                 else:
@@ -246,7 +246,7 @@ async def webhook(request: Request):
                 missing = session_data.get("missing_fields", {})
             
                 field = list(missing.keys())[0]
-                value = message_text.strip()
+                value = text.strip()
             
                 try:
                     if field == "amount":
@@ -316,19 +316,19 @@ async def webhook(request: Request):
             
                 # Update the field with the user's message
                 if current_field == "date":
-                    formatted = format_date(message_text)
+                    formatted = format_date(text)
                     if not formatted:
                         send_message(sender, "❌ Invalid date format. Use DD/MM/YYYY or DDMMYYYY.")
                         return {"status": "ok"}
                     row[row_idx] = formatted
                 elif current_field in ["quantity", "amount"]:
                     try:
-                        row[row_idx] = int(message_text.strip())
+                        row[row_idx] = int(text.strip())
                     except ValueError:
                         send_message(sender, f"❌ Please enter a valid number for {current_field}.")
                         return {"status": "ok"}
                 else:
-                    row[row_idx] = message_text.strip()
+                    row[row_idx] = text.strip()
             
                 del missing_fields[current_field]
             
