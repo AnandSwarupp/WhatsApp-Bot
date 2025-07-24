@@ -74,7 +74,7 @@ async def webhook(request: Request):
                 return {"status": "ok"}
 
             if state == "chat_finance":
-                MAX_ITEMS = 5
+                MAX_ITEMS = 25
                 try:
                     email = get_user_email(sender)
                     if not email:
