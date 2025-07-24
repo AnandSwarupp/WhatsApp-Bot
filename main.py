@@ -57,6 +57,26 @@ async def webhook(request: Request):
                 send_message(sender, "📧 Please enter your email to begin.")
                 set_user_state(sender, "awaiting_email")
                 return {"status": "ok"}
+                
+            if state == "chat_finance":
+                try:
+                    prompt = f"""
+                    You are a helpful finance assistant. Respond concisely and clearly to the user's questions about finance.
+            
+                    User: {text}
+                    """
+                    reply = ask_openai(prompt)
+                    send_message(sender, reply.strip())
+                except Exception as e:
+                    print("❌ Chat error:", e)
+                    send_message(sender, "⚠️ Sorry, something went wrong with the AI response.")
+                return {"status": "ok"}
+
+            if text == "exit" and state == "chat_finance":
+                set_user_state(sender, None)
+                send_message(sender, "👋 Exited chat mode.")
+                return {"status": "ok"}
+
             
             if state == "awaiting_invoice_details":
                 partial = get_user_partial_invoice(sender)
@@ -360,7 +380,10 @@ async def webhook(request: Request):
             elif button_id == "upload_cheque":
                 send_message(sender, "📤 Please upload a scanned cheque.")
             elif button_id == "chat_finance":
-                send_message(sender, "📤 Now you can ask anything related to your finance.")
+                set_user_state(sender, "chat_finance")
+                send_message(sender, "💬 You're now in finance chat mode. Ask your questions!")
+                return {"status": "ok"}
+
             return {"status": "ok"}
 
         # Media handling
