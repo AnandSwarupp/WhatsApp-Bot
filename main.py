@@ -233,7 +233,7 @@ async def webhook(request: Request):
             if state == "awaiting_otp":
                 if text == get_user_otp(sender):
                     mark_authenticated(sender)
-                    clear_user_session(sender)
+                    clear_user(sender)
                     send_message(sender, "✅ OTP verified! You're now logged in.")
                     send_button_message(sender)
                 else:
@@ -246,7 +246,7 @@ async def webhook(request: Request):
                 missing = session_data.get("missing_fields", {})
             
                 field = list(missing.keys())[0]
-                value = text.strip()
+                value = message_text.strip()
             
                 try:
                     if field == "amount":
@@ -316,19 +316,19 @@ async def webhook(request: Request):
             
                 # Update the field with the user's message
                 if current_field == "date":
-                    formatted = format_date(text)
+                    formatted = format_date(message_text)
                     if not formatted:
                         send_message(sender, "❌ Invalid date format. Use DD/MM/YYYY or DDMMYYYY.")
                         return {"status": "ok"}
                     row[row_idx] = formatted
                 elif current_field in ["quantity", "amount"]:
                     try:
-                        row[row_idx] = int(text.strip())
+                        row[row_idx] = int(message_text.strip())
                     except ValueError:
                         send_message(sender, f"❌ Please enter a valid number for {current_field}.")
                         return {"status": "ok"}
                 else:
-                    row[row_idx] = text.strip()
+                    row[row_idx] = message_text.strip()
             
                 del missing_fields[current_field]
             
