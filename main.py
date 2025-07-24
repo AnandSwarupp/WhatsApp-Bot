@@ -71,17 +71,18 @@ async def webhook(request: Request):
                 user_email = get_user_email(sender)
             
                 prompt = f"""
-            You are a data analyst. Write a single SQL SELECT query for Supabase (Postgres) that answers the user's question.
-            Use only these two tables:
-            - upload_invoice(email, invoice_number, sellers_name, buyers_name, date, item, quantity, amount)
-            - upload_cheique(email, payee_name, senders_name, amount, date, bank_name, account_number)
-            
-            Always include: WHERE email = '{user_email}'
-            Never use INSERT, UPDATE, DELETE, DROP — only SELECT.
-            Never add comments, explanation, markdown or code blocks — output ONLY the raw SQL query.
-            
-            User question: "{question}"
-            """
+                    You are a data analyst. Write a single SQL SELECT query for Supabase (Postgres) that answers the user's question.
+                    You can use only ONE of these tables:
+                    - upload_invoice(email, invoice_number, sellers_name, buyers_name, date, item, quantity, amount)
+                    - upload_cheique(email, payee_name, senders_name, amount, date, bank_name, account_number)
+                    
+                    Always include: WHERE email = '{user_email}'
+                    Never use JOIN, UNION, INSERT, UPDATE, DELETE, DROP — only SELECT.
+                    Never add comments, explanation, markdown or code blocks — output ONLY the raw SQL query.
+                    
+                    User question: "{question}"
+                    """
+
                 try:
                     sql_query = ask_openai(prompt)
                     print("✅ Generated SQL:", sql_query)
