@@ -33,6 +33,15 @@ def run_sql_on_supabase(sql_query: str):
     result = supabase.rpc("execute_sql", {"sql": sql_query}).execute()
     return result
 
+def fetch_user_data(email: str):
+    cheque_data = supabase.table("upload_cheique").select("*").eq("email", email).execute()
+    invoice_data = supabase.table("upload_invoice").select("*").eq("email", email).execute()
+
+    return {
+        "cheques": cheque_data.data or [],
+        "invoices": invoice_data.data or []
+    }
+
 @app.post("/webhook")
 async def webhook(request: Request):
     data = await request.json()
@@ -66,17 +75,46 @@ async def webhook(request: Request):
                 
             if state == "chat_finance":
                 try:
-                    prompt = f"""
-                    You are a helpful finance assistant. Respond concisely and clearly to the user's questions about finance.
+                    email = get_user_email(sender)
+                    if not email:
+                        send_message(sender, "❗ Cannot find your email in session. Please say 'hello' to restart.")
+                        return {"status": "ok"}
             
-                    User: {text}
-                    """
-                    reply = ask_openai(prompt)
-                    send_message(sender, reply.strip())
+                    user_data = fetch_user_data(email)
+            
+                    # Format cheques
+                    cheques = "\n".join(
+                        f"- {c['payee_name']} from {c['senders_name']} of ₹{c['amount']} on {c['date']} (Bank: {c['bank_name']})"
+                        for c in user_data["cheques"]
+                    ) or "No cheques found."
+            
+                    # Format invoices
+                    invoices = "\n".join(
+                        f"- Invoice {i['invoice_number']} from {i['sellers_name']} to {i['buyers_name']} of ₹{i['amount']} on {i['date']} (Item: {i['item']})"
+                        for i in user_data["invoices"]
+                    ) or "No invoices found."
+            
+                    prompt = f"""
+                        You are a finance assistant. Use the following user data to answer the question. Be concise and helpful.
+                        
+                        📄 Invoices:
+                        {invoices}
+                        
+                        🏦 Cheques:
+                        {cheques}
+                        
+                        Question: {text}
+                        Answer:
+                    """.strip()
+            
+                    ai_reply = ask_openai(prompt)
+                    send_message(sender, ai_reply.strip())
+            
                 except Exception as e:
-                    print("❌ Chat error:", e)
-                    send_message(sender, "⚠️ Sorry, something went wrong with the AI response.")
+                    print("❌ Chat with data error:", e)
+                    send_message(sender, "⚠️ Sorry, I couldn't access your finance records right now.")
                 return {"status": "ok"}
+
 
             if state == "awaiting_invoice_details":
                 partial = get_user_partial_invoice(sender)
