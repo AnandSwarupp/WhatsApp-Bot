@@ -23,6 +23,9 @@ def update_session(sender, data: dict):
 def clear_user_session(sender):
     supabase.table("user_sessions").delete().eq("whatsapp", sender).execute()
 
+def clear_user(sender):
+    supabase.table("user_sessions").delete().eq("whatsapp", sender).execute()
+
 def get_user_state(sender): return get_session(sender).get("state")
 def set_user_state(sender, state): update_session(sender, {"state": state})
 
