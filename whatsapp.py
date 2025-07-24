@@ -52,14 +52,3 @@ def send_button_message(to: str):
     response = requests.post(GRAPH_API_URL, headers=headers, json=payload)
     print(response.json())     
 
-def handle_button_click(to: str, button_id: str):
-    set_user_intent(to, button_id)
-
-    if button_id == "upload_cheque":
-        send_message(to, "📝 Please upload a clear photo or PDF of your cheque.")
-    elif button_id == "upload_invoice":
-        send_message(to, "🧾 Please upload your invoice document.")
-    elif button_id == "chat_finance":
-        send_message(to, "💬 Ask me anything finance-related!")
-    else:
-        send_message(to, "❌ Invalid choice. Please try again.")
