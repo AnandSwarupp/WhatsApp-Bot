@@ -20,7 +20,7 @@ def update_session(sender, data: dict):
     updated = {**current, **data, "whatsapp": sender}
     supabase.table("user_sessions").upsert(updated).execute()
 
-def clear_user(sender):
+def clear_user_session(sender):
     supabase.table("user_sessions").delete().eq("whatsapp", sender).execute()
 
 def get_user_state(sender): return get_session(sender).get("state")
@@ -70,3 +70,8 @@ def get_user_partial_invoice(user_id):
 
 def clear_user_partial_invoice(user_id):
     user_partial_invoice_data.pop(user_id, None)
+
+def set_user_session(sender, data: dict):
+    update_session(sender, data)
+def get_user_session(sender):
+    return get_session(sender)
