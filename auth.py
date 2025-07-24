@@ -4,16 +4,13 @@ import os
 from email.message import EmailMessage
 from supabase import create_client
 
-# Email credentials
 EMAIL_USER = "dinoboyadi@gmail.com"
 EMAIL_PASSWORD = "esahoznfsipmqjcq"
 
-# Supabase client setup
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# Session management using Supabase
 def get_session(sender):
     res = supabase.table("user_sessions").select("*").eq("whatsapp", sender).execute()
     return res.data[0] if res.data else {}
@@ -26,7 +23,6 @@ def update_session(sender, data: dict):
 def clear_user(sender):
     supabase.table("user_sessions").delete().eq("whatsapp", sender).execute()
 
-# Session field helpers
 def get_user_state(sender): return get_session(sender).get("state")
 def set_user_state(sender, state): update_session(sender, {"state": state})
 
@@ -40,9 +36,8 @@ def get_user_intent(sender): return get_session(sender).get("intent", "unknown")
 def set_user_intent(sender, intent): update_session(sender, {"intent": intent})
 
 def is_authenticated(sender): return get_user_email(sender) is not None
-def mark_authenticated(sender): pass  # Already handled via set_user_email()
+def mark_authenticated(sender): pass
 
-# OTP email logic
 def send_otp_email(to_email: str, otp: str):
     msg = EmailMessage()
     msg.set_content(f"Your FinBot verification code is: {otp}")
@@ -65,5 +60,13 @@ def generate_and_send_otp(sender, email):
     set_user_state(sender, "awaiting_otp")
     send_otp_email(email, otp)
 
+user_partial_invoice_data = {}
 
+def set_user_partial_invoice(user_id, data):
+    user_partial_invoice_data[user_id] = data
 
+def get_user_partial_invoice(user_id):
+    return user_partial_invoice_data.get(user_id, {})
+
+def clear_user_partial_invoice(user_id):
+    user_partial_invoice_data.pop(user_id, None)
