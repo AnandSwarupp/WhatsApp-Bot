@@ -72,40 +72,53 @@ async def webhook(request: Request):
                 send_message(sender, "📧 Please enter your email to begin.")
                 set_user_state(sender, "awaiting_email")
                 return {"status": "ok"}
-                
+
             if state == "chat_finance":
+                MAX_ITEMS = 5
                 try:
                     email = get_user_email(sender)
                     if not email:
                         send_message(sender, "❗ Cannot find your email in session. Please say 'hello' to restart.")
                         return {"status": "ok"}
-            
+                
                     user_data = fetch_user_data(email)
+            
+                    # Limit the data to avoid too many tokens
+                    cheques_list = user_data["cheques"][:MAX_ITEMS]
+                    invoices_list = user_data["invoices"][:MAX_ITEMS]
             
                     # Format cheques
                     cheques = "\n".join(
                         f"- {c['payee_name']} from {c['senders_name']} of ₹{c['amount']} on {c['date']} (Bank: {c['bank_name']})"
-                        for c in user_data["cheques"]
+                        for c in cheques_list
                     ) or "No cheques found."
+                    if len(user_data["cheques"]) > MAX_ITEMS:
+                        cheques += f"\n...and {len(user_data['cheques']) - MAX_ITEMS} more cheques."
             
                     # Format invoices
                     invoices = "\n".join(
                         f"- Invoice {i['invoice_number']} from {i['sellers_name']} to {i['buyers_name']} of ₹{i['amount']} on {i['date']} (Item: {i['item']})"
-                        for i in user_data["invoices"]
+                        for i in invoices_list
                     ) or "No invoices found."
+                    if len(user_data["invoices"]) > MAX_ITEMS:
+                        invoices += f"\n...and {len(user_data['invoices']) - MAX_ITEMS} more invoices."
             
                     prompt = f"""
-                        You are a finance assistant. Use the following user data to answer the question. Be concise and helpful.
-                        
-                        📄 Invoices:
-                        {invoices}
-                        
-                        🏦 Cheques:
-                        {cheques}
-                        
-                        Question: {text}
-                        Answer:
+                    You are a finance assistant. Use the following user data to answer the question. Be concise and helpful.
+                    
+                    📄 Invoices:
+                    {invoices}
+                    
+                    🏦 Cheques:
+                    {cheques}
+                    
+                    Question: {text}
+                    Answer:
                     """.strip()
+            
+                    # Trim prompt if it's too large
+                    if len(prompt) > 6000:  # rough character limit to prevent token overflow
+                        prompt = prompt[:6000] + "\n...data truncated due to length...\nQuestion: " + text + "\nAnswer:"
             
                     ai_reply = ask_openai(prompt)
                     send_message(sender, ai_reply.strip())
@@ -114,7 +127,6 @@ async def webhook(request: Request):
                     print("❌ Chat with data error:", e)
                     send_message(sender, "⚠️ Sorry, I couldn't access your finance records right now.")
                 return {"status": "ok"}
-
 
             if state == "awaiting_invoice_details":
                 partial = get_user_partial_invoice(sender)
