@@ -53,6 +53,12 @@ async def webhook(request: Request):
             text = msg["text"]["body"].strip().lower()
             state = get_user_state(sender)
 
+            if text == "exit":
+                if state == "chat_finance":
+                    set_user_state(sender, None)
+                    send_message(sender, "👋 You have exited chat mode. Say 'hello' to start again or choose an option.")
+                    return {"status": "ok"}
+
             if text == "hello":
                 send_message(sender, "📧 Please enter your email to begin.")
                 set_user_state(sender, "awaiting_email")
@@ -72,12 +78,6 @@ async def webhook(request: Request):
                     send_message(sender, "⚠️ Sorry, something went wrong with the AI response.")
                 return {"status": "ok"}
 
-            if text == "exit" and state == "chat_finance":
-                set_user_state(sender, None)
-                send_message(sender, "👋 Exited chat mode.")
-                return {"status": "ok"}
-
-            
             if state == "awaiting_invoice_details":
                 partial = get_user_partial_invoice(sender)
                 
