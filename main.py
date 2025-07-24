@@ -381,7 +381,7 @@ async def webhook(request: Request):
                 send_message(sender, "📤 Please upload a scanned cheque.")
             elif button_id == "chat_finance":
                 set_user_state(sender, "chat_finance")
-                send_message(sender, "💬 You're now in finance chat mode. Ask your questions!")
+                send_message(sender, "💬 You're now in finance chat mode. Ask your questions! If you want to exit finance chat mode type 'Exit'")
                 return {"status": "ok"}
 
             return {"status": "ok"}
