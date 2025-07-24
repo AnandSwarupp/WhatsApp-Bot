@@ -6,7 +6,7 @@ from auth import *
 from whatsapp import send_button_message
 from messenger import send_message
 from ocr import ocr_from_bytes
-from openai_utils import ask_openai
+from openai_utils import *
 from datetime import datetime
 import re
 import ast
@@ -170,6 +170,44 @@ async def webhook(request: Request):
                     send_message(sender, "❌ Incorrect OTP. Try again.")
                 return {"status": "ok"}
 
+            # In the text message handler section of webhook()
+            if text == "💬chat":
+                set_user_state(sender, "chat_mode")
+                send_message(sender, "💬 Chat mode activated! Ask me anything about your invoices or cheques.\nExample: 'Show my recent transactions' or 'How much did I spend last month?'")
+                return {"status": "ok"}
+            
+            if text == "exit":
+                set_user_state(sender, "authenticated")
+                send_message(sender, "👋 Exited chat mode. You're back to the main menu.")
+                return {"status": "ok"}
+            
+            if state == "chat_mode":
+                question = text
+                user_email = get_user_email(sender)
+                
+                try:
+                    # Generate SQL query
+                    sql_query = generate_sql_from_question(question, user_email)
+                    print("Generated SQL:", sql_query)
+                    
+                    # Execute query
+                    result = run_sql_on_supabase(sql_query)
+                    data = result.data
+                    
+                    if not data:
+                        send_message(sender, "❌ No matching records found for your question.")
+                        return {"status": "ok"}
+                    
+                    # Humanize the response
+                    humanized = humanize_data_response(data, question)
+                    send_message(sender, humanized)
+                    
+                except Exception as e:
+                    print("❌ Error during chat:", e)
+                    send_message(sender, "⚠ Sorry, I couldn't process your question. Please try rephrasing it.")
+                
+                return {"status": "ok"}
+            
             elif state == "awaiting_missing_cheque_fields":
                 session_data = get_user_session(sender)
                 cheque = session_data.get("pending_cheque", [])
