@@ -53,6 +53,61 @@ async def webhook(request: Request):
             text = msg["text"]["body"].strip().lower()
             state = get_user_state(sender)
 
+            # ✅ Enter chat mode when user types 'chat'
+            if text == "chat":
+                set_user_state(sender, "chat_mode")
+                send_message(sender, "💬 Chat mode activated! Ask me anything about your invoices or cheques.")
+                return {"status": "ok"}
+            
+            # ✅ Exit chat mode when user types 'exit'
+            if text == "exit":
+                set_user_state(sender, "authenticated")
+                send_message(sender, "👋 Exited chat mode. You're back to the main menu.")
+                return {"status": "ok"}
+            
+            # ✅ Handle chat questions in chat_mode
+            if state == "chat_mode":
+                question = text
+                user_email = get_user_email(sender)
+            
+                prompt = f"""
+            You are a data analyst. Write a single SQL SELECT query for Supabase (Postgres) that answers the user's question.
+            Use only these two tables: upload_invoice(email, invoice_number, sellers_name, buyers_name, date, item, quantity, amount)
+            and upload_cheique(email, payee_name, senders_name, amount, date, bank_name, account_number).
+            Always include WHERE email = '{user_email}'.
+            Never use INSERT, UPDATE, DELETE, DROP — only SELECT.
+            Never add comments, explanation, markdown or code blocks — output ONLY the raw SQL query.
+            
+            User question: "{question}"
+            """
+                try:
+                    sql_query = ask_openai(prompt)
+                    print("Generated SQL:", sql_query)
+            
+                    # Run the query
+                    result = run_sql_on_supabase(sql_query)
+                    data = result.data
+            
+                    if not data:
+                        send_message(sender, "❌ Sorry, no data found for your question.")
+                        return {"status": "ok"}
+            
+                    # Humanize response
+                    json_data = json.dumps(data, indent=2)
+                    humanize_prompt = f"""
+            You are a friendly assistant. Explain this data in plain English to the user.
+            Don't mention SQL, databases, or column names.
+            Data: {json_data}
+            """
+                    answer = ask_openai(humanize_prompt)
+                    send_message(sender, answer.strip())
+            
+                except Exception as e:
+                    print("❌ Error during chat:", e)
+                    send_message(sender, "⚠ Failed to process your question. Please try again.")
+                return {"status": "ok"}
+
+
             if text == "hello":
                 send_message(sender, "📧 Please enter your email to begin.")
                 set_user_state(sender, "awaiting_email")
