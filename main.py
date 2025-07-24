@@ -18,7 +18,7 @@ SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-ACCESS_TOKEN = "EAAR4EKodEE4BPJyofg2OyclOghSAbOWz1MQMDaOohedVeQgqOfSO7vjO6AGmPNZAFUD3yOjZAHl2yEyBeEcqXFkrdBLQUhkoadOKETZA41NMCWg8OCrxltZAjZCLzePkBAvYaHRbuc8p5fYVmWifPx1vu6FoWDKDfehTR1q2ZC1qbxF6hYNuUAYIZCNTBdhmMgKZC1ixIc96ZCiFrksZCsAhGxDbGFxpvQZAFxim7hdNmfFfDNH1gZDZD"
+ACCESS_TOKEN = "EAAR4EKodEE4BPF9D4cqV3WlD3mwKCrOhv3g3ZB7rlOolwOeifCCXoouHURgHr2CSqiRuZBPbV55GgYlvZAYm4a0h2lj6Hl7Hwzns51R56eTL3Q4aVDl1kXX4qLOtJyzIVfZAo8qdrc2tZCSAdt3ZCCiRO4T9A6tTGdLd04MlryfOdl0nyee4AG0e55A4RgcDAFtHJ4TaERqMKZCXVJnbkijkQOyCUrAQ7NzwomKUmkWnJYCyQZDZD"
 PHONE_NUMBER_ID = os.getenv("PHONE_NUMBER_ID")
 
 def format_date(raw_date: str) -> str | None:
@@ -170,44 +170,6 @@ async def webhook(request: Request):
                     send_message(sender, "❌ Incorrect OTP. Try again.")
                 return {"status": "ok"}
 
-            # In the text message handler section of webhook()
-            if text.lower() == "chat":
-                set_user_state(sender, "chat_mode")
-                send_message(sender, "💬 Chat mode activated! Ask me anything about your invoices or cheques.\nExample: 'Show my recent transactions' or 'How much did I spend last month?'")
-                return {"status": "ok"}
-            
-            if text == "exit":
-                set_user_state(sender, "authenticated")
-                send_message(sender, "👋 Exited chat mode. You're back to the main menu.")
-                return {"status": "ok"}
-            
-            if state == "chat_mode":
-                question = text
-                user_email = get_user_email(sender)
-                
-                try:
-                    # Generate SQL query
-                    sql_query = generate_sql_from_question(question, user_email)
-                    print("Generated SQL:", sql_query)
-                    
-                    # Execute query
-                    result = run_sql_on_supabase(sql_query)
-                    data = result.data
-                    
-                    if not data:
-                        send_message(sender, "❌ No matching records found for your question.")
-                        return {"status": "ok"}
-                    
-                    # Humanize the response
-                    humanized = humanize_data_response(data, question)
-                    send_message(sender, humanized)
-                    
-                except Exception as e:
-                    print("❌ Error during chat:", e)
-                    send_message(sender, "⚠ Sorry, I couldn't process your question. Please try rephrasing it.")
-                
-                return {"status": "ok"}
-            
             elif state == "awaiting_missing_cheque_fields":
                 session_data = get_user_session(sender)
                 cheque = session_data.get("pending_cheque", [])
