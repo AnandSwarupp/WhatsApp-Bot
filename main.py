@@ -72,9 +72,11 @@ async def webhook(request: Request):
             
                 prompt = f"""
             You are a data analyst. Write a single SQL SELECT query for Supabase (Postgres) that answers the user's question.
-            Use only these two tables: upload_invoice(email, invoice_number, sellers_name, buyers_name, date, item, quantity, amount)
-            and upload_cheique(email, payee_name, senders_name, amount, date, bank_name, account_number).
-            Always include WHERE email = '{user_email}'.
+            Use only these two tables:
+            - upload_invoice(email, invoice_number, sellers_name, buyers_name, date, item, quantity, amount)
+            - upload_cheique(email, payee_name, senders_name, amount, date, bank_name, account_number)
+            
+            Always include: WHERE email = '{user_email}'
             Never use INSERT, UPDATE, DELETE, DROP — only SELECT.
             Never add comments, explanation, markdown or code blocks — output ONLY the raw SQL query.
             
@@ -82,7 +84,7 @@ async def webhook(request: Request):
             """
                 try:
                     sql_query = ask_openai(prompt)
-                    print("Generated SQL:", sql_query)
+                    print("✅ Generated SQL:", sql_query)
             
                     # Run the query
                     result = run_sql_on_supabase(sql_query)
@@ -92,7 +94,7 @@ async def webhook(request: Request):
                         send_message(sender, "❌ Sorry, no data found for your question.")
                         return {"status": "ok"}
             
-                    # Humanize response
+                    # Humanize the result
                     json_data = json.dumps(data, indent=2)
                     humanize_prompt = f"""
             You are a friendly assistant. Explain this data in plain English to the user.
@@ -106,6 +108,7 @@ async def webhook(request: Request):
                     print("❌ Error during chat:", e)
                     send_message(sender, "⚠ Failed to process your question. Please try again.")
                 return {"status": "ok"}
+
 
 
             if text == "hello":
