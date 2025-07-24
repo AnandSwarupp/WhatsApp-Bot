@@ -359,6 +359,8 @@ async def webhook(request: Request):
                 send_message(sender, "📤 Please upload your invoice.")
             elif button_id == "upload_cheque":
                 send_message(sender, "📤 Please upload a scanned cheque.")
+            elif button_id == "chat_finance":
+                send_message(sender, "📤 Now you can ask anything related to your finance.")
             return {"status": "ok"}
 
         # Media handling
