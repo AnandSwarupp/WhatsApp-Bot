@@ -171,7 +171,7 @@ async def webhook(request: Request):
                 return {"status": "ok"}
 
             # In the text message handler section of webhook()
-            if text == "💬chat":
+            if text.lower() == "chat":
                 set_user_state(sender, "chat_mode")
                 send_message(sender, "💬 Chat mode activated! Ask me anything about your invoices or cheques.\nExample: 'Show my recent transactions' or 'How much did I spend last month?'")
                 return {"status": "ok"}
