@@ -83,7 +83,6 @@ async def webhook(request: Request):
                 
                     user_data = fetch_user_data(email)
             
-                    # Limit the data to avoid too many tokens
                     cheques_list = user_data["cheques"][:MAX_ITEMS]
                     invoices_list = user_data["invoices"][:MAX_ITEMS]
             
@@ -117,7 +116,7 @@ async def webhook(request: Request):
                     """.strip()
             
                     # Trim prompt if it's too large
-                    if len(prompt) > 6000:  # rough character limit to prevent token overflow
+                    if len(prompt) > 6000:
                         prompt = prompt[:6000] + "\n...data truncated due to length...\nQuestion: " + text + "\nAnswer:"
             
                     ai_reply = ask_openai(prompt)
@@ -131,7 +130,6 @@ async def webhook(request: Request):
             if state == "awaiting_invoice_details":
                 partial = get_user_partial_invoice(sender)
                 
-                # Ask in sequence: invoice_number → seller → buyer → date
                 if not partial.get("invoice_number"):
                     partial["invoice_number"] = text
                     set_user_partial_invoice(sender, partial)
@@ -158,7 +156,7 @@ async def webhook(request: Request):
                     partial["date"] = date_str
                     set_user_partial_invoice(sender, partial)
 
-                    # Finalize invoice upload (save placeholder item)
+                    # Finalize invoice upload
                     supabase.table("upload_invoice").insert({
                         "email": partial["email"],
                         "invoice_number": partial["invoice_number"],
@@ -650,8 +648,7 @@ async def webhook(request: Request):
                         next_field = list(missing.keys())[0]
                         send_message(sender, f"⚠️ Some cheque fields are missing.\nPlease enter value for '{next_field}':")
                         return {"status": "ok"}
-            
-                    # Unpack & insert
+
                     email, payee_name, senders_name, amount, date, bank_name, account_number = cheque
                     try:
                         supabase.table("upload_cheique").insert({
