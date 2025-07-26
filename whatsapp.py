@@ -51,4 +51,3 @@ def send_button_message(to: str):
     }
     response = requests.post(GRAPH_API_URL, headers=headers, json=payload)
     print(response.json())     
-
