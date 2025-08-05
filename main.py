@@ -18,7 +18,7 @@ SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-ACCESS_TOKEN = "EAAR4EKodEE4BPBlxtFOKwdHDOpSU0v3g58ZCvzjIXzDAUE2GjAtuuUeVkUZAN9HnGf6DYv05a4mRQyEGURYg1dbqUgGdrwQJbdrW2k59gfNLchf4Qnifepgcm9dsDjb6fg12Mo2p9qGcOjF2mHZAWY6ssxcXPCkPohWcnpBdPUZCAfzLBLgsvCgMkx3stHiZCcRVvzG8sUwP0DmXYLIRjy8oG2G2anyBixqU4IPFhYN0lb3AZD"
+ACCESS_TOKEN = "EAAR4EKodEE4BPOZAsHKYsd1QzQOZBuGJBJ1fXdHMYvGljwZAp6sVKPRyLOZAMZBPE3Lyiv1chFIGMJOXC8hM0i0UpERxcnbOUOKwjY2H1RA4deBinbBdarXFaadbPDcsBP0nw9bEww7zN7voLbZBMnsM53YMGYuX1S3ZAbry08IZBSnEqASW3Ys7CmUAoWDdJVgQSIUS4L90zmHytMx8452cH8BrkwyVvH3urLA2gYz9coOZCggZDZD"
 PHONE_NUMBER_ID = os.getenv("PHONE_NUMBER_ID")
 
 def format_date(raw_date: str) -> str | None:
@@ -699,3 +699,4 @@ async def webhook(request: Request):
         return JSONResponse(status_code=500, content={"error": str(e)})
 
     return {"status": "ok"}
+
